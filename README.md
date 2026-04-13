@@ -1,58 +1,67 @@
-# PraeCura Web (Spring Boot + Postgres)
+# PraeCuraWeb
 
-This repository contains a Spring Boot (Thymeleaf) web application for managing appointments, plus a local Postgres instance via Docker Compose.
+Sistema web clínico para la gestión de pacientes, citas, agenda médica, atención clínica, servicios, facturación, reportes y administración de usuarios.
 
-## Prerequisites
-- Docker Desktop (or Docker Engine) with `docker compose`
-- Java 21+ (recommended)
-- Internet access (Maven downloads dependencies on the first build)
+## Objetivo académico
 
-## Quick start (macOS/Linux)
-1. From the project root (the folder that contains `docker-compose.yml` and the `praecura-app/` directory), copy the environment template:
-   - `cp .env.example .env`
+Este proyecto fue desarrollado como entrega final de la asignatura Desarrollo de Proyectos con Software Libre, evidenciando:
 
-2. Start everything:
-   - `./setup_praecura_app.sh`
+- módulos funcionales tipo CRUD
+- integración persistente con PostgreSQL
+- despliegue en servidor Linux virtualizado
+- publicación mediante Apache
+- acceso remoto por SSH
+- funcionamiento real del sistema
 
-3. Open the app:
-   - `http://localhost:8080`
+## Tecnologías utilizadas
 
-### Recommended env vars
-- `PRAECURA_BOOTSTRAP_ADMIN_PASSWORD` (crea el admin con contraseña segura)
-- `PRAECURA_REMEMBER_ME_KEY` (clave larga para cookies remember‑me)
+- Java 21
+- Spring Boot
+- Thymeleaf
+- Maven
+- PostgreSQL
+- Apache
+- Ubuntu Server
+- VirtualBox
 
-### Demo data (opcional)
-Para borrar datos y crear 50 registros realistas por entidad (sin tocar usuarios ni especialidades):
-1. Exporta las variables:
-   - `PRAECURA_DEMO_SEED=true`
-   - `PRAECURA_DEMO_COUNT=50`
-2. Inicia la app.
-3. Cuando termine de levantar, vuelve a poner `PRAECURA_DEMO_SEED=false`.
+## Módulos funcionales principales
 
-### Default credentials (bootstrap)
-- Admin: `admin` / `Admin123*` (solo si **no** se define `PRAECURA_BOOTSTRAP_ADMIN_PASSWORD`)
-- Recomendado: definir `PRAECURA_BOOTSTRAP_ADMIN_PASSWORD` y cambiar la contraseña tras el primer ingreso.
+- Gestión de pacientes
+- Gestión de doctores
+- Agenda y citas médicas
+- Atención clínica
+- Servicios médicos
+- Facturación y pagos
+- Reportes
+- Usuarios, roles y control de acceso
 
-## Manual start (any OS)
-1. Start Postgres:
-   - `docker compose up -d`
+## Despliegue realizado
 
-2. Run the app:
-   - `cd praecura-app`
-   - `./mvnw spring-boot:run`
+La aplicación fue desplegada en Ubuntu Server ARM64 ejecutándose en VirtualBox, con PostgreSQL como base de datos y Apache como reverse proxy.
 
-## Notes
-- Database connection defaults are aligned between `docker-compose.yml` and `src/main/resources/application.yml`.
-- Flyway migrations live in `praecura-app/src/main/resources/db/migration`.
-- Initial roles/users are created by `DataSeeder` on startup (idempotent).
+## Estructura del repositorio
 
-## Resetting the database (start from zero)
-If you want to wipe all app data (patients, appointments and users) and start again from a clean state:
+- praecura-app/ : aplicación principal Spring Boot
+- scripts/ : scripts auxiliares
+- deploy/ : archivos de apoyo para despliegue en Ubuntu Server
+- docs/ : documentación y capturas
+- docker-compose.yml : apoyo para ejecución local
+- setup_praecura_app.sh : script auxiliar de inicialización local
 
-1. Ensure Postgres is running:
-   - `docker compose up -d`
+## Archivos de despliegue incluidos
 
-2. Run the reset script:
-   - `./scripts/reset-db.sh`
+En la carpeta deploy/ se incluyen:
 
-After running it, restart the app. On startup, `DataSeeder` will recreate the admin account if it does not exist.
+- praecura_postgres_bootstrap.sql
+- praecura.service
+- praecura-apache.conf
+- praecura.env.production.example
+
+## Seguridad y configuración
+
+Las credenciales reales y variables sensibles no se almacenan en este repositorio.
+El archivo .env.example contiene únicamente valores de ejemplo.
+
+## Autor
+
+Baldwin Rodríguez

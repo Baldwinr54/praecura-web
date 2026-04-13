@@ -1,0 +1,18 @@
+[Unit]
+Description=PraeCura Web Application
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=praecura
+Group=praecura
+WorkingDirectory=/opt/praecura/praecura-web/praecura-app
+EnvironmentFile=/etc/praecura/praecura.env
+ExecStart=/usr/bin/java -jar /opt/praecura/praecura-web/praecura-app/target/praecura-app-0.0.1-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
