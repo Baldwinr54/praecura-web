@@ -1,7 +1,7 @@
 -- V6: Seeds mínimos para poder iniciar sesión en una BD nueva
 -- Crea roles ADMIN/USER y dos usuarios de ejemplo si la tabla está vacía.
 -- Credenciales por defecto:
---   admin / Admin123*
+--   admin / CAMBIAR_PASSWORD_ADMIN
 --   user  / User123*
 
 DO $$

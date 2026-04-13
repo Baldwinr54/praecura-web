@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DataSeeder implements CommandLineRunner {
 
   private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
-  private static final String DEFAULT_ADMIN_PASSWORD = "Admin123*";
+  private static final String DEFAULT_ADMIN_PASSWORD = "CAMBIAR_PASSWORD_ADMIN";
 
   private final RoleRepository roleRepository;
   private final UserRepository userRepository;

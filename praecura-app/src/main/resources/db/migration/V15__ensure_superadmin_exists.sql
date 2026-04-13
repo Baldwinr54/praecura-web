@@ -12,7 +12,7 @@
 -- - Si falta user, lo inserta (para demos).
 --
 -- Credenciales por defecto:
---   admin / Admin123*
+--   admin / CAMBIAR_PASSWORD_ADMIN
 --   user  / User123*
 
 DO $$
@@ -32,7 +32,7 @@ BEGIN
   SELECT id INTO admin_role_id FROM roles WHERE name='ADMIN';
   SELECT id INTO user_role_id  FROM roles WHERE name='USER';
 
-  -- Superadmin (password: Admin123*)
+  -- Superadmin (password: CAMBIAR_PASSWORD_ADMIN)
   IF NOT EXISTS (SELECT 1 FROM users WHERE lower(username) = 'admin') THEN
     INSERT INTO users(username, password_hash, enabled, role_id, failed_login_attempts, locked_until)
     VALUES (

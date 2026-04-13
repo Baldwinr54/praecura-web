@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-praecura_db}
       POSTGRES_USER: ${POSTGRES_USER:-praecurauser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-PraeCura123*}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CAMBIAR_PASSWORD_POSTGRES}
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
