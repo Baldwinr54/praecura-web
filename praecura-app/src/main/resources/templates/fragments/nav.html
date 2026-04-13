@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" th:fragment="nav">
+<body>
+<!--
+  Fragmento de navegación (compatibilidad).
+  Algunas vistas antiguas pueden hacer: th:replace="~{fragments/nav :: nav}"
+
+  Nota: En el layout oficial se usa fragments/layout :: layout(...)
+  Este fragmento permite que esas vistas no fallen por "template not found".
+-->
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom">
+  <div class="container-fluid">
+    <a class="navbar-brand" th:href="@{/}" th:text="${appDisplayName ?: 'PraeCura'}">PraeCura</a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#pcNav" aria-controls="pcNav" aria-expanded="false" aria-label="Mostrar navegación">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="pcNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link" th:href="@{/}">Inicio</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/patients}">Pacientes</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/doctors}">Médicos</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/specialties}">Especialidades</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/services}">Servicios</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/sites}">Sedes</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/resources}">Recursos</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/appointments}">Citas</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/agenda}">Agenda</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/reception}">Recepción</a></li>
+        <li class="nav-item"><a class="nav-link" th:href="@{/reports}">Reportes</a></li>
+        <li class="nav-item" th:if="${isAdmin}"><a class="nav-link" th:href="@{/admin/users}">Usuarios</a></li>
+      </ul>
+
+      <div class="d-flex align-items-center gap-3">
+        <div class="text-light small">
+          <div><strong th:text="${currentUser ?: '—'}">—</strong></div>
+          <div class="text-white-50" th:text="${currentRole ?: '—'}">—</div>
+        </div>
+
+        <form th:action="@{/logout}" method="post" class="mb-0">
+          <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+          <button type="submit" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</nav>
+
+</body>
+</html>

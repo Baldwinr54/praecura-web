@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Reportes', 'Reportes', 'Analítica clínica y operativa')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1 section-title">Resumen por período</h5>
+        <div class="text-muted small">Métricas operativas para seguimiento.</div>
+      </div>
+      <form class="d-flex gap-2 align-items-center" th:action="@{/reports}" method="get">
+        <input class="form-control form-control-sm" type="date" name="from" th:value="${from}">
+        <input class="form-control form-control-sm" type="date" name="to" th:value="${to}">
+        <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+      </form>
+    </div>
+
+    <div class="stat-grid mt-3">
+      <div class="stat-card">
+        <div class="stat-label">Total</div>
+        <div class="stat-value" th:text="${metrics.total}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pendientes</div>
+        <div class="stat-value" th:text="${metrics.pendientes}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Confirmadas</div>
+        <div class="stat-value" th:text="${metrics.confirmadas}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Atendidas</div>
+        <div class="stat-value" th:text="${metrics.completadas}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Canceladas</div>
+        <div class="stat-value" th:text="${metrics.canceladas}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">No show</div>
+        <div class="stat-value" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(metrics.noShowRatePct, 2)}%|">0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Médicos activos</div>
+        <div class="stat-value" th:text="${metrics.medicosActivos}">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <div class="col-md-6">
+      <div class="card soft-card p-4 h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h5 class="mb-1">Resumen operativo</h5>
+            <div class="text-muted">Accesos rápidos a módulos clave para revisión diaria.</div>
+          </div>
+          <span class="badge text-bg-secondary">Básico</span>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap mt-3">
+          <a class="btn btn-outline-primary" th:href="@{/appointments}">Ver Citas</a>
+          <a class="btn btn-outline-primary" th:href="@{/agenda}">Ver Agenda</a>
+          <a class="btn btn-outline-primary" th:href="@{/patients}">Ver Pacientes</a>
+          <a class="btn btn-primary" th:href="@{/reports/analytics}">Analítica avanzada</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/doctors}">Comparativo médicos</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/services}">Comparativo servicios</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/specialties}">Comparativo especialidades</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/hours}">Demanda por hora</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/days}">Demanda por día</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/revenue}">Ingresos ejecutivos</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/benchmark}">Benchmark histórico</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/benchmark/monthly}">Benchmark mensual</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/productivity}">Productividad médicos</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/productivity/services}">Productividad servicios</a>
+        </div>
+
+        <div class="mt-3 small text-muted">
+          Consejo: usa filtros por médico/estado para encontrar huecos y resolver conflictos.
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6" th:if="${isAdmin}">
+      <div class="card soft-card p-4 h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h5 class="mb-1">Auditoría</h5>
+            <div class="text-muted">Trazabilidad de cambios: quién hizo qué y cuándo.</div>
+          </div>
+          <span class="badge text-bg-warning">Admin</span>
+        </div>
+
+        <div class="mt-3 d-flex gap-2 flex-wrap">
+          <a class="btn btn-primary" th:href="@{/reports/audit}">Abrir Auditoría</a>
+          <a class="btn btn-outline-danger" th:href="@{/reports/compliance}">Cumplimiento</a>
+          <a class="btn btn-outline-primary" th:href="@{/reports/messages}">Mensajería</a>
+        </div>
+
+        <div class="mt-3 small text-muted">
+          Incluye creación, edición, desactivación y acciones clave del sistema.
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card soft-card p-4 h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h5 class="mb-1">Buenas prácticas</h5>
+            <div class="text-muted">Sugerencias rápidas para una operación estable.</div>
+          </div>
+          <span class="badge text-bg-success">Tip</span>
+        </div>
+
+        <ul class="mt-3 mb-0">
+          <li>Preferir <b>Cancelar</b> antes que <b>Eliminar</b> citas.</li>
+          <li>Desactivar médicos/servicios en vez de borrarlos.</li>
+          <li>Usar la Agenda diaria para confirmar cargas y evitar choques.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</html>

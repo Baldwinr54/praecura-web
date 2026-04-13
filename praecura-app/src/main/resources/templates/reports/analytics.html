@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Analítica', 'Reportes', 'Analítica avanzada')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1 section-title">Analítica avanzada</h5>
+        <div class="text-muted small">Resumen por médico, servicio, estado y evolución diaria.</div>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <form class="d-flex gap-2 align-items-center" th:action="@{/reports/analytics}" method="get">
+          <input class="form-control form-control-sm" type="date" name="from" th:value="${from}">
+          <input class="form-control form-control-sm" type="date" name="to" th:value="${to}">
+          <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+        </form>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/analytics/export.csv(from=${from}, to=${to})}">Exportar CSV</a>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/analytics/export.xlsx(from=${from}, to=${to})}">Exportar XLSX</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-lg-3">
+      <div class="card soft-card p-3 h-100">
+        <div class="text-muted small">Total en rango</div>
+        <div class="display-6 fw-semibold" th:text="${insights.total}">0</div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-3">
+      <div class="card soft-card p-3 h-100">
+        <div class="text-muted small">Eficiencia</div>
+        <div class="display-6 fw-semibold" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(insights.completionRate, 1)}%|">0%</div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-3">
+      <div class="card soft-card p-3 h-100">
+        <div class="text-muted small">Cancelación</div>
+        <div class="display-6 fw-semibold" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(insights.cancelRate, 1)}%|">0%</div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-3">
+      <div class="card soft-card p-3 h-100">
+        <div class="text-muted small">No-show</div>
+        <div class="display-6 fw-semibold" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(insights.noShowRate, 1)}%|">0%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+      <div class="callout">
+        <strong>Médico más demandado:</strong>
+        <span th:text="${insights.topDoctor}">—</span>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="callout">
+        <strong>Servicio más demandado:</strong>
+        <span th:text="${insights.topService}">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6" th:if="${insights.highCancel}">
+      <div class="callout warning">
+        <strong>Alerta:</strong> tasa de cancelación alta en el rango.
+      </div>
+    </div>
+    <div class="col-12 col-lg-6" th:if="${insights.highNoShow}">
+      <div class="callout warning">
+        <strong>Alerta:</strong> no-show alto en el rango.
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3" th:if="${actions != null and !actions.isEmpty()}">
+    <div class="col-12">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Acciones sugeridas</div>
+        <div class="list-group list-group-flush">
+          <a class="list-group-item list-group-item-action px-0"
+             th:each="a : ${actions}"
+             th:href="@{${a.href}}">
+            <div class="fw-semibold" th:text="${a.title}">Acción</div>
+            <div class="text-muted small" th:text="${a.detail}">Detalle</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Evolución diaria</div>
+        <div class="chart-box">
+          <canvas id="seriesChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Distribución por estado</div>
+        <div class="chart-box">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-12 col-lg-6">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Top médicos</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Médico</th>
+              <th class="text-end">Citas</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${byDoctor}">
+              <td th:text="${r.name}">Médico</td>
+              <td class="text-end" th:text="${r.total}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(byDoctor)}">
+              <td colspan="2" class="text-center text-muted py-3">Sin datos</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Top servicios</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Servicio</th>
+              <th class="text-end">Citas</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${byService}">
+              <td th:text="${r.name}">Servicio</td>
+              <td class="text-end" th:text="${r.total}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(byService)}">
+              <td colspan="2" class="text-center text-muted py-3">Sin datos</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const series = [[${seriesJs}]];
+    const labels = series.map(s => s.day.toString());
+    const total = series.map(s => s.total);
+    const canceladas = series.map(s => s.canceladas);
+    const noAsistio = series.map(s => s.noAsistio);
+
+    const byStatus = [[${byStatus}]];
+    const statusLabels = byStatus.map(r => r[0]);
+    const statusValues = byStatus.map(r => r[1]);
+
+    const c1 = document.getElementById('seriesChart');
+    if (c1 && window.Chart) {
+      new Chart(c1, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Total', data: total, borderColor: '#0f9d88', backgroundColor: 'rgba(15,157,136,0.12)', tension: 0.3 },
+            { label: 'Canceladas', data: canceladas, borderColor: '#1e3a8a', backgroundColor: 'rgba(30,58,138,0.10)', tension: 0.3 },
+            { label: 'No asistió', data: noAsistio, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', tension: 0.3 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } }
+      });
+    }
+
+    const c2 = document.getElementById('statusChart');
+    if (c2 && window.Chart) {
+      new Chart(c2, {
+        type: 'doughnut',
+        data: {
+          labels: statusLabels,
+          datasets: [{
+            data: statusValues,
+            backgroundColor: ['#0f9d88', '#2dd4bf', '#1e3a8a', '#f59e0b', '#ef4444']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+  </script>
+</div>
+
+</html>

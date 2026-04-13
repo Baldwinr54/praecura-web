@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Benchmark mensual', 'Reportes', 'Comparativo mes vs mes')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1 section-title">Benchmark mensual</h5>
+        <div class="text-muted small">Comparación del mes actual vs el mes anterior.</div>
+      </div>
+      <form class="d-flex gap-2 align-items-center" th:action="@{/reports/benchmark/monthly}" method="get">
+        <input class="form-control form-control-sm" type="number" name="year" min="2000" max="2100" th:value="${year}" style="width: 120px">
+        <select class="form-select form-select-sm" name="month" style="width: 160px">
+          <option value="1" th:selected="${month == 1}">Enero</option>
+          <option value="2" th:selected="${month == 2}">Febrero</option>
+          <option value="3" th:selected="${month == 3}">Marzo</option>
+          <option value="4" th:selected="${month == 4}">Abril</option>
+          <option value="5" th:selected="${month == 5}">Mayo</option>
+          <option value="6" th:selected="${month == 6}">Junio</option>
+          <option value="7" th:selected="${month == 7}">Julio</option>
+          <option value="8" th:selected="${month == 8}">Agosto</option>
+          <option value="9" th:selected="${month == 9}">Septiembre</option>
+          <option value="10" th:selected="${month == 10}">Octubre</option>
+          <option value="11" th:selected="${month == 11}">Noviembre</option>
+          <option value="12" th:selected="${month == 12}">Diciembre</option>
+        </select>
+        <button class="btn btn-sm btn-primary" type="submit">Ver</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="callout mb-3">
+    <strong>Mes actual:</strong>
+    <span th:text="|${from} → ${to}|">2026-01-01 → 2026-01-31</span>
+    <span class="ms-2">|</span>
+    <strong>Mes anterior:</strong>
+    <span th:text="|${prevFrom} → ${prevTo}|">2025-12-01 → 2025-12-31</span>
+  </div>
+
+  <div class="card soft-card p-3 mb-3">
+    <div class="fw-semibold mb-2">Resumen comparativo</div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+        <tr>
+          <th>Métrica</th>
+          <th class="text-end">Actual</th>
+          <th class="text-end">Anterior</th>
+          <th class="text-end">Δ%</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${benchRows}">
+          <td th:text="${r.label}">Total</td>
+          <td class="text-end" th:text="${r.currentValue}">0</td>
+          <td class="text-end" th:text="${r.previousValue}">0</td>
+          <td class="text-end">
+            <span class="metric-delta" th:classappend="${r.deltaPct < 0} ? ' down' : ' up'"
+                  th:text="|${r.deltaPct < 0 ? '-' : '+'}${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(r.deltaPct, 1)}%|">+0%</span>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Serie diaria (Mes actual vs Mes anterior)</div>
+        <div class="chart-box">
+          <canvas id="benchmarkMonthlyChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const current = [[${currentSeriesJs}]];
+    const previous = [[${previousSeriesJs}]];
+
+    const labels = current.map(r => r.day.toString());
+    const currentValues = current.map(r => r.total);
+    const previousValues = previous.map(r => r.total);
+
+    const ctx = document.getElementById('benchmarkMonthlyChart');
+    if (ctx && window.Chart) {
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Mes actual', data: currentValues, borderColor: '#0f9d88', backgroundColor: 'rgba(15,157,136,0.12)', tension: 0.3 },
+            { label: 'Mes anterior', data: previousValues, borderColor: '#1e3a8a', backgroundColor: 'rgba(30,58,138,0.10)', tension: 0.3 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } }
+      });
+    }
+  </script>
+</div>
+
+</html>

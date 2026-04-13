@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Cargos clínicos', 'Finanzas', 'Cargos pendientes y facturación consolidada')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <form class="row g-2 align-items-end" th:action="@{/billing/charges}" method="get">
+      <div class="col-md-2">
+        <label class="form-label">Estado</label>
+        <select class="form-select" name="status">
+          <option th:each="st : ${statuses}" th:value="${st.name()}" th:selected="${status == st}" th:text="${st.label()}">Pendiente</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Paciente ID</label>
+        <input class="form-control" type="number" min="1" name="patientId" placeholder="Ej: 12" th:value="${patientId}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Cita ID</label>
+        <input class="form-control" type="number" min="1" name="appointmentId" placeholder="Ej: 45" th:value="${appointmentId}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Desde</label>
+        <input class="form-control" type="date" name="from" th:value="${from}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Hasta</label>
+        <input class="form-control" type="date" name="to" th:value="${to}">
+      </div>
+
+      <div class="col-md-2 d-flex gap-2">
+        <input type="hidden" name="size" th:value="${size}">
+        <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
+        <a class="btn btn-outline-primary" th:href="@{/billing}">Facturación</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <div class="fw-semibold">Nuevo cargo clínico</div>
+        <div class="text-muted small">Registra procedimientos, medicamentos, estudios e insumos para cobrar luego en caja.</div>
+      </div>
+      <span class="badge text-bg-info">Pendientes: <span th:text="${openChargeCount}">0</span></span>
+    </div>
+
+    <form class="row g-2" th:action="@{/billing/charges}" method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <div class="col-md-2">
+        <label class="form-label">Paciente ID</label>
+        <input class="form-control" type="number" min="1" name="patientId" required th:value="${patientId}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Cita ID</label>
+        <input class="form-control" type="number" min="1" name="appointmentId" th:value="${appointmentId}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Servicio ID</label>
+        <input class="form-control" type="number" min="1" name="serviceId" placeholder="Opcional">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Categoría</label>
+        <select class="form-select" name="category">
+          <option th:each="c : ${categories}" th:value="${c.name()}" th:text="${c.label()}">Consulta</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Fecha/Hora del cargo</label>
+        <input class="form-control" type="datetime-local" name="performedAt">
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Descripción</label>
+        <input class="form-control" type="text" name="description" placeholder="Ej: Curación y medicamento aplicado">
+      </div>
+      <div class="col-md-1">
+        <label class="form-label">Cant.</label>
+        <input class="form-control" type="number" name="quantity" min="1" value="1">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">P. unitario</label>
+        <input class="form-control" type="number" name="unitPrice" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Impuesto (0.18)</label>
+        <input class="form-control" type="number" name="taxRate" min="0" step="0.0001" placeholder="0.18">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Descuento</label>
+        <input class="form-control" type="number" name="discount" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="col-md-1">
+        <label class="form-label">Moneda</label>
+        <input class="form-control" type="text" name="currency" value="DOP" maxlength="3">
+      </div>
+
+      <div class="col-md-10">
+        <label class="form-label">Notas</label>
+        <input class="form-control" type="text" name="notes" placeholder="Observaciones del cargo">
+      </div>
+      <div class="col-md-2 d-grid">
+        <label class="form-label">&nbsp;</label>
+        <button class="btn btn-primary" type="submit">Registrar cargo</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="alert alert-warning mb-3" th:if="${patientId == null}">
+    Para facturar cargos seleccionados, primero filtra por <strong>Paciente ID</strong>.
+  </div>
+
+  <form id="bulkInvoiceForm" th:action="@{/billing/invoices/create-from-charges}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <input type="hidden" name="patientId" th:value="${patientId}">
+  </form>
+
+  <div class="card soft-card p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+          <tr>
+            <th style="width:50px" class="text-center">
+              <input type="checkbox" id="selectAllCharges" th:disabled="${patientId == null}">
+            </th>
+            <th style="width:90px">Cargo</th>
+            <th style="width:170px">Fecha</th>
+            <th style="width:90px">Paciente</th>
+            <th style="width:90px">Cita</th>
+            <th style="width:170px">Categoría</th>
+            <th>Descripción</th>
+            <th style="width:80px" class="text-end">Cant.</th>
+            <th style="width:120px" class="text-end">Subtotal</th>
+            <th style="width:120px" class="text-end">Imp.</th>
+            <th style="width:120px" class="text-end">Desc.</th>
+            <th style="width:120px" class="text-end">Total</th>
+            <th style="width:120px">Estado</th>
+            <th style="width:140px" class="text-end">Acciones</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="c : ${chargesPage.content}">
+            <td class="text-center">
+              <input type="checkbox" name="chargeIds" th:value="${c.id}" form="bulkInvoiceForm"
+                     th:disabled="${patientId == null or c.status.name() != 'OPEN'}">
+            </td>
+            <td th:text="${c.id}">1</td>
+            <td th:text="${c.createdAt != null ? #temporals.format(c.createdAt, 'yyyy-MM-dd HH:mm') : '—'}">2026-01-01</td>
+            <td th:text="${c.patient != null ? c.patient.id : '—'}">12</td>
+            <td th:text="${c.appointment != null ? c.appointment.id : '—'}">45</td>
+            <td th:text="${c.category != null ? c.category.label() : '—'}">Consulta</td>
+            <td th:text="${c.description}">Descripción</td>
+            <td class="text-end" th:text="${c.quantity}">1</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(c.subtotal)}">RD$ 0.00</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(c.tax)}">RD$ 0.00</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(c.discount)}">RD$ 0.00</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(c.total)}">RD$ 0.00</td>
+            <td>
+              <span class="badge text-bg-light" th:text="${c.status != null ? c.status.label() : '—'}">Pendiente</span>
+            </td>
+            <td class="text-end">
+              <form th:if="${c.status != null and c.status.name() == 'OPEN'}"
+                    th:action="@{/billing/charges/{id}/cancel(id=${c.id})}" method="post"
+                    data-confirm="¿Cancelar este cargo?" style="display:inline">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button class="btn btn-sm btn-outline-danger" type="submit">Cancelar</button>
+              </form>
+            </td>
+          </tr>
+          <tr th:if="${chargesPage.totalElements == 0}">
+            <td colspan="14" class="text-center text-muted py-3">No hay cargos para este filtro.</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <button class="btn btn-primary" type="submit" form="bulkInvoiceForm" th:disabled="${patientId == null}">Crear factura con seleccionados</button>
+          <span class="text-muted small" th:if="${patientId != null}">Paciente actual: <strong th:text="${patientId}">0</strong></span>
+        </div>
+
+        <nav th:if="${chargesPage.totalPages > 1}">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item" th:classappend="${chargesPage.first} ? 'disabled' : ''">
+              <a class="page-link"
+                 th:href="@{/billing/charges(status=${status}, patientId=${patientId}, appointmentId=${appointmentId}, from=${from}, to=${to}, page=${chargesPage.number-1}, size=${size})}">Anterior</a>
+            </li>
+
+            <li class="page-item" th:each="p : ${#numbers.sequence(0, chargesPage.totalPages-1)}"
+                th:classappend="${p == chargesPage.number} ? 'active' : ''">
+              <a class="page-link"
+                 th:href="@{/billing/charges(status=${status}, patientId=${patientId}, appointmentId=${appointmentId}, from=${from}, to=${to}, page=${p}, size=${size})}"
+                 th:text="${p+1}">1</a>
+            </li>
+
+            <li class="page-item" th:classappend="${chargesPage.last} ? 'disabled' : ''">
+              <a class="page-link"
+                 th:href="@{/billing/charges(status=${status}, patientId=${patientId}, appointmentId=${appointmentId}, from=${from}, to=${to}, page=${chargesPage.number+1}, size=${size})}">Siguiente</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+
+  <script>
+    (() => {
+      const selectAll = document.getElementById('selectAllCharges');
+      if (!selectAll) return;
+      selectAll.addEventListener('change', () => {
+        document.querySelectorAll('input[name="chargeIds"]:not(:disabled)').forEach(cb => {
+          cb.checked = selectAll.checked;
+        });
+      });
+    })();
+  </script>
+</div>
+
+</html>

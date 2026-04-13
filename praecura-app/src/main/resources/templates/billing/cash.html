@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Caja', 'Finanzas', 'Arqueo y cierre de caja')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1">Caja</h5>
+        <div class="text-muted small">Arqueo diario de efectivo.</div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/billing/cash/export/sessions.csv}">Exportar arqueo CSV</a>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/billing/cash/export/sessions.xlsx}">Exportar arqueo XLSX</a>
+        <a class="btn btn-sm btn-outline-secondary" th:href="@{/billing}">Volver a facturación</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card soft-card p-4 mb-3" th:if="${session == null}">
+    <div class="fw-semibold mb-2">Abrir caja</div>
+    <form class="row g-2 align-items-end" th:action="@{/billing/cash/open}" method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <div class="col-md-3">
+        <label class="form-label">Monto inicial</label>
+        <input class="form-control" type="number" name="openingAmount" min="0" step="0.01" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Notas</label>
+        <input class="form-control" type="text" name="notes" placeholder="Apertura de caja">
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary" type="submit">Abrir caja</button>
+      </div>
+    </form>
+  </div>
+
+  <div th:if="${session != null}">
+    <div class="stat-grid mb-3">
+      <div class="stat-card">
+        <div class="stat-label">Apertura</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(summary.openingAmount)}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Efectivo cobrado</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(summary.cashIn)}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Efectivo reembolsado</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(summary.cashOut)}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Esperado en caja</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(summary.expected)}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Diferencia</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(summary.difference)}">0</div>
+      </div>
+    </div>
+
+    <div class="stat-grid mb-3" th:if="${reconciliation != null}">
+      <div class="stat-card">
+        <div class="stat-label">Capturado (turno)</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(reconciliation.totalCaptured)}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Reembolsado (turno)</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(reconciliation.totalRefunded)}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Neto (turno)</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(reconciliation.totalNet)}">0</div>
+      </div>
+    </div>
+
+    <div class="card soft-card p-4 mb-3" th:if="${reconciliation != null}">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <div>
+          <div class="fw-semibold">Conciliación por método</div>
+          <div class="text-muted small">
+            Turno: <span th:text="${#temporals.format(reconciliation.from, 'yyyy-MM-dd HH:mm')}">—</span>
+            a <span th:text="${#temporals.format(reconciliation.to, 'yyyy-MM-dd HH:mm')}">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+          <tr>
+            <th>Método</th>
+            <th class="text-end">Cobros</th>
+            <th class="text-end">Total cobrado</th>
+            <th class="text-end">Reembolsos</th>
+            <th class="text-end">Total reembolsado</th>
+            <th class="text-end">Neto</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="m : ${reconciliation.methods}">
+            <td th:text="${m.method != null ? m.method.label() : '—'}">Efectivo</td>
+            <td class="text-end" th:text="${m.capturedCount}">0</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(m.capturedAmount)}">RD$ 0.00</td>
+            <td class="text-end" th:text="${m.refundCount}">0</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(m.refundedAmount)}">RD$ 0.00</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(m.netAmount)}">RD$ 0.00</td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(reconciliation.methods)}">
+            <td colspan="6" class="text-center text-muted py-3">Sin movimientos en el turno actual.</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card soft-card p-4 mb-3" th:if="${reconciliation != null}">
+      <div class="fw-semibold mb-2">Distribución por canal</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+          <tr>
+            <th>Canal</th>
+            <th class="text-end">Operaciones</th>
+            <th class="text-end">Monto</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="c : ${reconciliation.channels}">
+            <td th:text="${c.channel != null ? c.channel.label() : '—'}">Presencial</td>
+            <td class="text-end" th:text="${c.count}">0</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(c.amount)}">RD$ 0.00</td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(reconciliation.channels)}">
+            <td colspan="3" class="text-center text-muted py-3">Sin cobros por canal en este turno.</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card soft-card p-4 mb-3" th:if="${isBillingSupervisor}">
+      <div class="fw-semibold mb-2">Cerrar caja</div>
+      <form class="row g-2 align-items-end" th:action="@{/billing/cash/{id}/close(id=${session.id})}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="col-md-3">
+          <label class="form-label">Monto contado</label>
+          <input class="form-control" type="number" name="closingAmount" id="closingAmountInput"
+                 min="0" step="0.01" required th:attr="data-expected=${summary.expected}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Notas</label>
+          <input class="form-control" type="text" name="notes" id="closingNotesInput" placeholder="Observaciones de cierre">
+        </div>
+        <div class="col-md-3">
+          <button class="btn btn-outline-danger" type="submit">Cerrar caja</button>
+        </div>
+        <div class="col-12">
+          <div class="form-text">
+            Si existe diferencia entre contado y esperado, debes registrar observación de cierre.
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="alert alert-warning mb-3" th:if="${!isBillingSupervisor}">
+      Solo un supervisor financiero puede cerrar la caja activa.
+    </div>
+
+    <div class="card soft-card p-4 mb-3">
+      <div class="fw-semibold mb-2">Movimientos de efectivo (caja actual)</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Factura</th>
+            <th>Paciente</th>
+            <th class="text-end">Monto</th>
+            <th class="text-end">Recibido</th>
+            <th class="text-end">Cambio</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="m : ${movements}">
+            <td th:text="${#temporals.format(m.createdAt, 'yyyy-MM-dd HH:mm')}">2026-02-06 10:00</td>
+            <td>
+              <a class="link-primary" th:if="${m.invoice != null}" th:href="@{/billing/invoices/{id}(id=${m.invoice.id})}"
+                 th:text="${'#' + m.invoice.id}">#1</a>
+              <span class="text-muted" th:if="${m.invoice == null}">-</span>
+            </td>
+            <td th:text="${m.patient != null ? m.patient.fullName : '—'}">Paciente</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(m.amount)}">RD$ 0.00</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(m.cashReceived)}">RD$ 0.00</td>
+            <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(m.cashChange)}">RD$ 0.00</td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(movements)}">
+            <td colspan="6" class="text-center text-muted py-3">No hay cobros en efectivo registrados en la caja actual.</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-grid mb-3">
+    <div class="stat-card">
+      <div class="stat-label">Sin factura</div>
+      <div class="stat-value" th:text="${pendingInvoiceCount}">0</div>
+      <div class="metric-delta" th:if="${pendingInvoiceCount > 0}">Requiere emisión</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Por cobrar</div>
+      <div class="stat-value" th:text="${pendingCollectionCount}">0</div>
+      <div class="metric-delta" th:if="${pendingCollectionCount > 0}">Pendiente de caja</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pagadas</div>
+      <div class="stat-value" th:text="${paidCount}">0</div>
+      <div class="metric-delta">Del día</div>
+    </div>
+  </div>
+
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+      <div>
+        <div class="fw-semibold">Cobro rápido por búsqueda</div>
+        <div class="text-muted small">Busca por nombre del paciente, ID de paciente, ID de cita o número de factura.</div>
+      </div>
+    </div>
+
+    <form class="row g-2 align-items-end mb-3" th:action="@{/billing/cash}" method="get">
+      <div class="col-md-10">
+        <label class="form-label">Buscar</label>
+        <input class="form-control" type="text" name="q" th:value="${cashSearch}" placeholder="Ej: María, 25, 1003">
+      </div>
+      <div class="col-md-2 d-grid">
+        <label class="form-label">&nbsp;</label>
+        <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+        <tr>
+          <th>Factura</th>
+          <th>Paciente</th>
+          <th>Cita</th>
+          <th>NCF</th>
+          <th class="text-end">Balance</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="i : ${pendingInvoices}">
+          <td th:text="${'#' + i.id}">#1001</td>
+          <td th:text="${i.patient != null ? i.patient.fullName : '—'}">Paciente</td>
+          <td th:text="${i.appointment != null ? ('#' + i.appointment.id) : '—'}">—</td>
+          <td th:text="${i.ncf != null ? i.ncf : 'Pendiente'}">Pendiente</td>
+          <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(i.balance)}">RD$ 0.00</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-primary" th:href="@{/billing/invoices/{id}(id=${i.id})}">Cobrar</a>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(pendingInvoices)}">
+          <td colspan="6" class="text-center text-muted py-3">No hay facturas pendientes para este filtro.</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+      <div>
+        <div class="fw-semibold">Cobros del día</div>
+        <div class="text-muted small">Citas de hoy con acceso rápido a facturación.</div>
+      </div>
+      <a class="btn btn-sm btn-outline-secondary" th:href="@{/appointments}">Ir a Citas</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+        <tr>
+          <th>Hora</th>
+          <th>Paciente</th>
+          <th>Médico</th>
+          <th>Servicio</th>
+          <th class="text-end">Precio</th>
+          <th class="text-end">Balance</th>
+          <th>Factura</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${cashRows}">
+          <td th:text="${#temporals.format(r.scheduledAt, 'HH:mm')}">08:00</td>
+          <td th:text="${r.patientName}">Paciente</td>
+          <td th:text="${r.doctorName}">Médico</td>
+          <td th:text="${r.serviceName != null ? r.serviceName : '—'}">Servicio</td>
+          <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(r.servicePrice)}">0</td>
+          <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(r.balance)}">0</td>
+          <td>
+            <a th:if="${r.invoiceId != null}" class="link-primary" th:href="@{/billing/invoices/{id}(id=${r.invoiceId})}">
+              #<span th:text="${r.invoiceId}">1</span>
+            </a>
+            <span th:if="${r.invoiceId == null}" class="text-muted">Sin factura</span>
+          </td>
+          <td class="text-end">
+            <form th:if="${r.invoiceId == null}" th:action="@{/billing/invoices/create}" method="post" style="display:inline">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <input type="hidden" name="appointmentId" th:value="${r.appointmentId}">
+              <button class="btn btn-sm btn-outline-primary" type="submit">Crear factura</button>
+            </form>
+            <a th:if="${r.invoiceId == null and r.patientId != null}"
+               class="btn btn-sm btn-outline-secondary"
+               th:href="@{/billing/charges(patientId=${r.patientId}, appointmentId=${r.appointmentId})}">
+              Crear cargo
+            </a>
+            <a th:if="${r.invoiceId != null}" class="btn btn-sm btn-primary" th:href="@{/billing/invoices/{id}(id=${r.invoiceId})}">
+              Cobrar
+            </a>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(cashRows)}">
+          <td colspan="8" class="text-center text-muted py-3">No hay citas programadas para hoy.</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+      <div>
+        <div class="fw-semibold">Historial de cajas</div>
+        <div class="text-muted small">Últimas aperturas y cierres para control administrativo.</div>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+        <tr>
+          <th>Caja</th>
+          <th>Apertura</th>
+          <th>Cierre</th>
+          <th>Usuario</th>
+          <th class="text-end">Apertura</th>
+          <th class="text-end">Esperado</th>
+          <th class="text-end">Contado</th>
+          <th class="text-end">Diferencia</th>
+          <th>Estado</th>
+          <th class="text-end">Exportar</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${recentSessions}">
+          <td th:text="${'#' + s.id}">#1</td>
+          <td th:text="${s.openedAt != null ? #temporals.format(s.openedAt, 'yyyy-MM-dd HH:mm') : '—'}">2026-02-06 08:00</td>
+          <td th:text="${s.closedAt != null ? #temporals.format(s.closedAt, 'yyyy-MM-dd HH:mm') : '—'}">2026-02-06 17:00</td>
+          <td>
+            <div th:text="${s.openedBy != null ? s.openedBy : '—'}">admin</div>
+            <div class="small text-muted" th:if="${s.closedBy != null}" th:text="${'Cierra: ' + s.closedBy}">Cierra: admin</div>
+          </td>
+          <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(s.openingAmount)}">RD$ 0.00</td>
+          <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(s.expected)}">RD$ 0.00</td>
+          <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(s.closingAmount)}">RD$ 0.00</td>
+          <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(s.difference)}">RD$ 0.00</td>
+          <td>
+            <span class="badge text-bg-success" th:if="${s.status != null and s.status.name() == 'OPEN'}">Abierta</span>
+            <span class="badge text-bg-secondary" th:if="${s.status != null and s.status.name() == 'CLOSED'}">Cerrada</span>
+          </td>
+          <td class="text-end">
+            <div class="d-flex gap-1 justify-content-end flex-wrap">
+              <a class="btn btn-sm btn-outline-secondary" th:href="@{/billing/cash/sessions/{id}/export.csv(id=${s.id})}">Movimientos</a>
+              <a class="btn btn-sm btn-outline-secondary" th:href="@{/billing/cash/sessions/{id}/reconciliation.csv(id=${s.id})}">Conciliación</a>
+            </div>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(recentSessions)}">
+          <td colspan="10" class="text-center text-muted py-3">No hay historial de cajas.</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const amount = document.getElementById('closingAmountInput');
+      const notes = document.getElementById('closingNotesInput');
+      if (!amount || !notes) return;
+
+      const expected = parseFloat(amount.getAttribute('data-expected') || '0');
+      const syncRequirement = () => {
+        const counted = parseFloat(amount.value || '0');
+        const hasDiff = Math.abs(counted - expected) > 0.009;
+        notes.required = hasDiff;
+      };
+
+      amount.addEventListener('input', syncRequirement);
+      syncRequirement();
+    })();
+  </script>
+</div>
+
+</html>

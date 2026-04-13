@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Médico', 'Médico', 'Registro médico')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4">
+    <div th:if="${stats != null}" class="callout mb-3">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="fw-semibold">Rendimiento último <span th:text="${stats.days}">30</span> días</div>
+        <form class="d-flex gap-2" th:action="@{|/doctors/${form.id}/edit|}" method="get">
+          <select class="form-select form-select-sm" name="range">
+            <option th:value="7" th:selected="${range == 7}">7d</option>
+            <option th:value="30" th:selected="${range == 30}">30d</option>
+            <option th:value="90" th:selected="${range == 90}">90d</option>
+          </select>
+          <button class="btn btn-sm btn-outline-primary" type="submit">Ver</button>
+        </form>
+      </div>
+      <div class="d-flex flex-wrap gap-3 small mt-1">
+        <span>Total: <b th:text="${stats.total}">0</b></span>
+        <span>Atendidas: <b th:text="${stats.completadas}">0</b></span>
+        <span>Canceladas: <b th:text="${stats.canceladas}">0</b></span>
+        <span>No asistió: <b th:text="${stats.noAsistio}">0</b></span>
+        <span>No-show: <b th:text="${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(stats.noShowRate, 2)}">0</b>%</span>
+      </div>
+      <div class="chart-box mt-3">
+        <canvas id="doctorTrend"></canvas>
+      </div>
+    </div>
+    <form th:object="${form}"
+          th:action="${form.id} == null ? @{/doctors} : @{|/doctors/${form.id}|}"
+          method="post">
+
+      <input type="hidden" th:field="*{id}">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nombre completo</label>
+          <input class="form-control" th:field="*{fullName}" placeholder="Ej: Dra. Ana Pérez" autocomplete="name">
+          <div class="text-danger small" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Especialidad</label>
+          <div th:if="${#lists.isEmpty(specialties)}">
+            <input class="form-control" th:field="*{specialty}" placeholder="Ej: Medicina General">
+            <div class="form-text">No hay especialidades registradas; puede escribirla manualmente.</div>
+          </div>
+          <div th:if="${!#lists.isEmpty(specialties)}">
+            <select class="form-select" th:field="*{specialtyId}">
+              <!-- Texto estático para evitar que se vea "vacío" si algún motor no procesa th:text -->
+              <option value="">— Seleccione —</option>
+              <option th:each="s : ${specialties}"
+                      th:value="${s.id}"
+                      th:text="${#strings.isEmpty(s.name) ? ('Especialidad #' + s.id) : s.name}">
+                Especialidad
+              </option>
+            </select>
+            <div class="form-text">Seleccione del catálogo. Si no aplica, puede escribir una especialidad manual abajo.</div>
+            <input class="form-control mt-2" th:field="*{specialty}" placeholder="(Opcional) Escriba una especialidad no listada">
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-md-12">
+          <label class="form-label">Servicios que ofrece</label>
+        <div class="form-text">Selecciona los servicios que este médico ofrece. Esto se usa para filtrar el listado de servicios al crear/editar una cita.</div>
+          <select class="form-select" th:field="*{serviceIds}" multiple size="6">
+            <option th:each="s : ${services}" th:value="${s.id}" th:text="${s.name}"></option>
+          </select>
+          <div class="form-text">Use Ctrl/Cmd para seleccionar múltiples servicios.</div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-2">
+        <div class="col-md-6">
+          <label class="form-label">Colegiatura</label>
+          <input class="form-control" th:field="*{licenseNo}" placeholder="Ej: CMD-12345">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Teléfono</label>
+          <input class="form-control" th:field="*{phone}" placeholder="Ej: 809-000-0000" inputmode="numeric" maxlength="12" autocomplete="tel" data-mask="rd-phone">
+        </div>
+      </div>
+
+      <div class="row g-3 mt-2">
+        <div class="col-md-6">
+          <label class="form-label">Buffer entre citas (min)</label>
+          <input class="form-control" th:field="*{bufferMinutes}" type="number" min="0" max="60" step="1" placeholder="Ej: 5">
+          <div class="form-text">Holgura para notas, transición y preparación. Recomendado: 5 por defecto; 10–15 si hay más variabilidad.</div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-2">
+        <div class="col-md-8">
+          <label class="form-label">Días laborales</label>
+          <div class="d-flex flex-wrap gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" th:field="*{workDays}" value="MON" id="dayMon">
+              <label class="form-check-label" for="dayMon">Lun</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" th:field="*{workDays}" value="TUE" id="dayTue">
+              <label class="form-check-label" for="dayTue">Mar</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" th:field="*{workDays}" value="WED" id="dayWed">
+              <label class="form-check-label" for="dayWed">Mié</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" th:field="*{workDays}" value="THU" id="dayThu">
+              <label class="form-check-label" for="dayThu">Jue</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" th:field="*{workDays}" value="FRI" id="dayFri">
+              <label class="form-check-label" for="dayFri">Vie</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" th:field="*{workDays}" value="SAT" id="daySat">
+              <label class="form-check-label" for="daySat">Sáb</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" th:field="*{workDays}" value="SUN" id="daySun">
+              <label class="form-check-label" for="daySun">Dom</label>
+            </div>
+          </div>
+          <div class="form-text">Define los días en los que el médico atiende para validar citas.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Horario</label>
+          <div class="d-flex gap-2">
+            <input class="form-control" type="time" th:field="*{workStart}">
+            <input class="form-control" type="time" th:field="*{workEnd}">
+          </div>
+          <div class="form-text">Ej: 08:00 a 17:00.</div>
+        </div>
+      </div>
+
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary">Guardar</button>
+        <a class="btn btn-outline-dark" th:href="@{/doctors}">Volver</a>
+      </div>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const series = [[${series}]];
+    if (series && window.Chart) {
+      const labels = series.map(s => s.day.toString());
+      const total = series.map(s => s.total);
+      const ctx = document.getElementById('doctorTrend');
+      if (ctx) {
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Citas',
+              data: total,
+              borderColor: '#0f9d88',
+              backgroundColor: 'rgba(15,157,136,0.12)',
+              tension: 0.3
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+      }
+    }
+  </script>
+</div>
+
+</html>

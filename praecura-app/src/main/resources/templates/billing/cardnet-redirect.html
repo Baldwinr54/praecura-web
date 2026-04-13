@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>Redirigiendo a CardNET…</title>
+</head>
+<body>
+  <form id="cardnetForm" th:action="${authorizeUrl}" method="post">
+    <input type="hidden" name="SESSION" th:value="${sessionId}" />
+  </form>
+  <script>
+    document.getElementById('cardnetForm').submit();
+  </script>
+  <p>Redirigiendo a CardNET, espera un momento…</p>
+</body>
+</html>

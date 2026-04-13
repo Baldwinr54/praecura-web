@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'BI Ejecutivo', 'Analítica', 'Indicadores ejecutivos, alertas y cierre diario')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-3 mb-3">
+    <form class="row g-2 align-items-end" th:action="@{/reports/executive}" method="get">
+      <div class="col-md-3"><label class="form-label">Desde</label><input class="form-control" type="date" name="from" th:value="${from}"></div>
+      <div class="col-md-3"><label class="form-label">Hasta</label><input class="form-control" type="date" name="to" th:value="${to}"></div>
+      <div class="col-md-6 d-flex gap-2">
+        <button class="btn btn-outline-primary" type="submit">Actualizar</button>
+        <form th:action="@{/reports/alerts/generate}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <button class="btn btn-outline-secondary" type="submit">Generar alertas</button>
+        </form>
+        <form th:action="@{/reports/closings/generate}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <button class="btn btn-outline-dark" type="submit">Generar cierre diario</button>
+        </form>
+      </div>
+    </form>
+  </div>
+
+  <div class="stat-grid mb-3">
+    <div class="stat-card"><div class="stat-label">Citas</div><div class="stat-value" th:text="${summary.appointments}">0</div></div>
+    <div class="stat-card"><div class="stat-label">Completadas</div><div class="stat-value" th:text="${summary.completed}">0</div></div>
+    <div class="stat-card"><div class="stat-label">No-show</div><div class="stat-value" th:text="${summary.noShow}">0</div></div>
+    <div class="stat-card"><div class="stat-label">Cobrado</div><div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(summary.collected)}">RD$ 0.00</div></div>
+    <div class="stat-card"><div class="stat-label">Pendiente</div><div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(summary.pending)}">RD$ 0.00</div></div>
+    <div class="stat-card"><div class="stat-label">Reembolsos</div><div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(summary.refunds)}">RD$ 0.00</div></div>
+    <div class="stat-card"><div class="stat-label">e-CF pendientes</div><div class="stat-value" th:text="${summary.pendingEcf}">0</div></div>
+    <div class="stat-card"><div class="stat-label">Compromisos vencidos</div><div class="stat-value" th:text="${summary.overdueCommitments}">0</div></div>
+    <div class="stat-card"><div class="stat-label">Alertas abiertas</div><div class="stat-value" th:text="${summary.openAlerts}">0</div></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-xl-7">
+      <div class="card soft-card p-3 h-100">
+        <h6>Alertas operativas</h6>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Tipo</th><th>Severidad</th><th>Estado</th><th>Mensaje</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="a : ${alerts}">
+              <td th:text="${a.alertType}">Tipo</td>
+              <td><span class="badge" th:classappend="${a.severity.name() == 'CRITICAL'} ? ' text-bg-danger' : (${a.severity.name() == 'WARNING'} ? ' text-bg-warning' : ' text-bg-info')" th:text="${a.severity.label()}">Sev</span></td>
+              <td><span class="badge text-bg-light" th:text="${a.status.label()}">Estado</span></td>
+              <td th:text="${a.message}">Mensaje</td>
+              <td>
+                <form th:if="${a.status.name() != 'RESOLVED'}" th:action="@{/reports/alerts/{id}/resolve(id=${a.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-success" type="submit">Resolver</button>
+                </form>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-5">
+      <div class="card soft-card p-3 h-100">
+        <h6>Cierres operativos</h6>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Fecha</th><th>Estado</th><th>Citas</th><th>Cobrado</th><th>Acción</th></tr></thead>
+            <tbody>
+            <tr th:each="c : ${closings}">
+              <td th:text="${c.closingDate}">2026-01-01</td>
+              <td><span class="badge text-bg-light" th:text="${c.status.label()}">Estado</span></td>
+              <td th:text="${c.completedAppointments + '/' + c.totalAppointments}">0/0</td>
+              <td th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(c.totalCollected)}">RD$ 0.00</td>
+              <td>
+                <form th:if="${c.status.name() != 'FINALIZED'}" th:action="@{/reports/closings/{id}/finalize(id=${c.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <input class="form-control form-control-sm mb-1" name="notes" placeholder="Nota de cierre">
+                  <button class="btn btn-sm btn-outline-primary" type="submit">Finalizar</button>
+                </form>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</html>

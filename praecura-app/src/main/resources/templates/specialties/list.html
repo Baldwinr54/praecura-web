@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:replace="~{fragments/layout :: layout(~{::content}, 'Especialidades', 'Especialidades', 'Especialidades clínicas')}">
+  <div th:fragment="content">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h2 class="h4 mb-0">Catálogo de Especialidades</h2>
+        <div class="text-muted small">Administre las especialidades que se mostrarán en el formulario de Doctores.</div>
+      </div>
+      <a class="btn btn-primary" th:if="${isAdmin}" th:href="@{/specialties/new}">
+        <i class="bi bi-plus-lg me-1"></i> Nueva
+      </a>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form class="row g-2 align-items-end" method="get" th:action="@{/specialties}">
+          <div class="col-sm-6 col-md-5">
+            <label class="form-label" for="q">Buscar</label>
+            <input class="form-control" id="q" name="q" type="text" placeholder="Nombre de especialidad" th:value="${q}" />
+          </div>
+          <div class="col-sm-3 col-md-2">
+            <label class="form-label" for="size">Por página</label>
+            <select class="form-select" id="size" name="size">
+              <option th:selected="${size == 10}" value="10">10</option>
+              <option th:selected="${size == 20}" value="20">20</option>
+              <option th:selected="${size == 50}" value="50">50</option>
+            </select>
+          </div>
+          <div class="col-sm-3 col-md-2">
+            <button class="btn btn-outline-primary w-100" type="submit">
+              <i class="bi bi-search me-1"></i> Buscar
+            </button>
+          </div>
+        </form>
+
+        <div class="table-responsive mt-3">
+          <table class="table table-hover align-middle">
+            <thead>
+            <tr>
+              <th style="width: 90px;">ID</th>
+              <th>Nombre</th>
+              <th style="width: 140px;">Estado</th>
+              <th style="width: 220px;" class="text-end">Acciones</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:if="${specialtiesPage.totalElements == 0}">
+              <td colspan="4" class="text-muted">No hay registros para mostrar.</td>
+            </tr>
+            <tr th:each="s : ${specialtiesPage.content}">
+              <td th:text="${s.id}">1</td>
+              <td>
+                <span th:text="${s.name}">Cardiología</span>
+              </td>
+              <td>
+                <span class="badge" th:classappend="${s.active} ? ' bg-success' : ' bg-secondary'"
+                      th:text="${s.active} ? 'Activa' : 'Inactiva'">Activa</span>
+              </td>
+              <td class="text-end">
+                <div th:if="${isAdmin}">
+                  <a class="btn btn-sm btn-outline-secondary" th:href="@{/specialties/{id}/edit(id=${s.id})}">
+                    <i class="bi bi-pencil-square me-1"></i> Editar
+                  </a>
+                  <form class="d-inline" th:action="@{/specialties/{id}/toggle(id=${s.id})}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button class="btn btn-sm" th:classappend="${s.active} ? ' btn-outline-danger' : ' btn-outline-success'" type="submit"
+                            th:title="${s.active} ? 'Desactivar' : 'Activar'">
+                      <i class="bi" th:classappend="${s.active} ? ' bi-slash-circle' : ' bi-check-circle'"></i>
+                      <span th:text="${s.active} ? 'Desactivar' : 'Activar'">Desactivar</span>
+                    </button>
+                  </form>
+                </div>
+                <span th:if="${!isAdmin}" class="text-body-secondary">—</span>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <nav th:if="${specialtiesPage.totalPages > 1}" aria-label="Paginación">
+          <ul class="pagination justify-content-end">
+            <li class="page-item" th:classappend="${specialtiesPage.first} ? 'disabled'">
+              <a class="page-link" th:href="@{/specialties(page=${specialtiesPage.number - 1}, size=${size}, q=${q})}">Anterior</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, specialtiesPage.totalPages - 1)}"
+                th:classappend="${i == specialtiesPage.number} ? 'active'">
+              <a class="page-link" th:href="@{/specialties(page=${i}, size=${size}, q=${q})}" th:text="${i + 1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${specialtiesPage.last} ? 'disabled'">
+              <a class="page-link" th:href="@{/specialties(page=${specialtiesPage.number + 1}, size=${size}, q=${q})}">Siguiente</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

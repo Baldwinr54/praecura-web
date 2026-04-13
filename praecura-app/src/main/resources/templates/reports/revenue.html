@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Ingresos', 'Reportes', 'Ingresos y cobros')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1 section-title">Ingresos y ticket promedio</h5>
+        <div class="text-muted small">Resumen ejecutivo con comparación vs. período anterior.</div>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <form class="d-flex gap-2 align-items-center" th:action="@{/reports/revenue}" method="get">
+          <input class="form-control form-control-sm" type="date" name="from" th:value="${from}">
+          <input class="form-control form-control-sm" type="date" name="to" th:value="${to}">
+          <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+        </form>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/revenue/export.csv(from=${from}, to=${to})}">Exportar CSV</a>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/revenue/export.xlsx(from=${from}, to=${to})}">Exportar XLSX</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-grid mb-3">
+    <div class="stat-card">
+      <div class="stat-label">Ingresos</div>
+      <div class="stat-value" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(revenueStats.totalRevenue)}|">RD$ 0.00</div>
+      <div th:if="${revenueStats.hasPrevious}" class="metric-delta" th:classappend="${revenueStats.revenueDown} ? ' down' : ' up'"
+           th:text="|${revenueStats.revenueDown ? '-' : '+'}${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(revenueStats.revenueDeltaPct, 1)}% vs anterior|">+0%</div>
+      <div th:if="${!revenueStats.hasPrevious}" class="metric-delta neutral">Sin referencia anterior</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Cobros reales</div>
+      <div class="stat-value" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(cashStats.captured)}|">RD$ 0.00</div>
+      <div th:if="${cashStats.hasPrevious}" class="metric-delta" th:classappend="${cashStats.capturedDown} ? ' down' : ' up'"
+           th:text="|${cashStats.capturedDown ? '-' : '+'}${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(cashStats.capturedDeltaPct, 1)}% vs anterior|">+0%</div>
+      <div th:if="${!cashStats.hasPrevious}" class="metric-delta neutral">Sin referencia anterior</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Ticket promedio</div>
+      <div class="stat-value" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(revenueStats.avgTicket)}|">RD$ 0.00</div>
+      <div th:if="${revenueStats.hasPrevious}" class="metric-delta" th:classappend="${revenueStats.ticketDeltaPct < 0} ? ' down' : ' up'"
+           th:text="|${revenueStats.ticketDeltaPct < 0 ? '-' : '+'}${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(revenueStats.ticketDeltaPct, 1)}% vs anterior|">+0%</div>
+      <div th:if="${!revenueStats.hasPrevious}" class="metric-delta neutral">Sin referencia anterior</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Citas completadas</div>
+      <div class="stat-value" th:text="${revenueStats.completedCount}">0</div>
+      <div th:if="${revenueStats.hasPrevious}" class="metric-delta" th:classappend="${revenueStats.completedDeltaPct < 0} ? ' down' : ' up'"
+           th:text="|${revenueStats.completedDeltaPct < 0 ? '-' : '+'}${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(revenueStats.completedDeltaPct, 1)}% vs anterior|">+0%</div>
+      <div th:if="${!revenueStats.hasPrevious}" class="metric-delta neutral">Sin referencia anterior</div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3" th:if="${alerts != null and !alerts.isEmpty()}">
+    <div class="col-12">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Alertas ejecutivas</div>
+        <ul class="mb-0">
+          <li th:each="a : ${alerts}" th:text="${a.message}">Alerta</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3" th:if="${actions != null and !actions.isEmpty()}">
+    <div class="col-12">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Acciones sugeridas</div>
+        <div class="list-group list-group-flush">
+          <a class="list-group-item list-group-item-action px-0"
+             th:each="a : ${actions}"
+             th:href="@{${a.href}}">
+            <div class="fw-semibold" th:text="${a.title}">Acción</div>
+            <div class="text-muted small" th:text="${a.detail}">Detalle</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+      <div class="callout">
+        <strong>Servicio top por ingresos:</strong>
+        <span th:text="${topService}">—</span>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="callout">
+        <strong>Médico top por ingresos:</strong>
+        <span th:text="${topDoctor}">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+      <div class="callout">
+        <strong>Especialidad top por ingresos:</strong>
+        <span th:text="${topSpecialty}">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Ingresos por servicio</div>
+        <div class="chart-box">
+          <canvas id="serviceRevenueChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Ingresos por médico</div>
+        <div class="chart-box">
+          <canvas id="doctorRevenueChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-12">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Ingresos por especialidad</div>
+        <div class="chart-box">
+          <canvas id="specialtyRevenueChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-12 col-lg-6">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Detalle servicios</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Servicio</th>
+              <th class="text-end">Ingresos</th>
+              <th class="text-end">Completadas</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${byService}">
+              <td th:text="${r.serviceName}">Servicio</td>
+              <td class="text-end" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(r.revenue)}|">RD$ 0.00</td>
+              <td class="text-end" th:text="${r.completed}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(byService)}">
+              <td colspan="3" class="text-center text-muted py-3">Sin datos</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Detalle médicos</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Médico</th>
+              <th class="text-end">Ingresos</th>
+              <th class="text-end">Completadas</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${byDoctor}">
+              <td th:text="${r.doctorName}">Médico</td>
+              <td class="text-end" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(r.revenue)}|">RD$ 0.00</td>
+              <td class="text-end" th:text="${r.completed}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(byDoctor)}">
+              <td colspan="3" class="text-center text-muted py-3">Sin datos</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-12">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Detalle especialidades</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Especialidad</th>
+              <th class="text-end">Ingresos</th>
+              <th class="text-end">Completadas</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${bySpecialty}">
+              <td th:text="${r.specialtyName}">Especialidad</td>
+              <td class="text-end" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(r.revenue)}|">RD$ 0.00</td>
+              <td class="text-end" th:text="${r.completed}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(bySpecialty)}">
+              <td colspan="3" class="text-center text-muted py-3">Sin datos</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const serviceRows = [[${byService}]];
+    const serviceLabels = serviceRows.map(r => r.serviceName);
+    const serviceValues = serviceRows.map(r => r.revenue);
+
+    const doctorRows = [[${byDoctor}]];
+    const doctorLabels = doctorRows.map(r => r.doctorName);
+    const doctorValues = doctorRows.map(r => r.revenue);
+
+    const specialtyRows = [[${bySpecialty}]];
+    const specialtyLabels = specialtyRows.map(r => r.specialtyName);
+    const specialtyValues = specialtyRows.map(r => r.revenue);
+
+    const c1 = document.getElementById('serviceRevenueChart');
+    if (c1 && window.Chart) {
+      new Chart(c1, {
+        type: 'bar',
+        data: {
+          labels: serviceLabels,
+          datasets: [{ label: 'Ingresos', data: serviceValues, backgroundColor: 'rgba(15,157,136,0.6)', borderRadius: 6 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+
+    const c2 = document.getElementById('doctorRevenueChart');
+    if (c2 && window.Chart) {
+      new Chart(c2, {
+        type: 'bar',
+        data: {
+          labels: doctorLabels,
+          datasets: [{ label: 'Ingresos', data: doctorValues, backgroundColor: 'rgba(30,58,138,0.55)', borderRadius: 6 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+
+    const c3 = document.getElementById('specialtyRevenueChart');
+    if (c3 && window.Chart) {
+      new Chart(c3, {
+        type: 'bar',
+        data: {
+          labels: specialtyLabels,
+          datasets: [{ label: 'Ingresos', data: specialtyValues, backgroundColor: 'rgba(45,212,191,0.6)', borderRadius: 6 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+  </script>
+</div>
+
+</html>

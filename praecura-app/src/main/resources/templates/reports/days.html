@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Demanda por día', 'Reportes', 'Distribución semanal de citas')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1 section-title">Demanda por día de la semana</h5>
+        <div class="text-muted small">Encuentra los días más cargados y planifica capacidad.</div>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <form class="d-flex gap-2 align-items-center" th:action="@{/reports/days}" method="get">
+          <input class="form-control form-control-sm" type="date" name="from" th:value="${from}">
+          <input class="form-control form-control-sm" type="date" name="to" th:value="${to}">
+          <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+        </form>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/days/export.csv(from=${from}, to=${to})}">Exportar CSV</a>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/days/export.xlsx(from=${from}, to=${to})}">Exportar XLSX</a>
+      </div>
+    </div>
+
+    <div class="stat-grid mt-3">
+      <div class="stat-card">
+        <div class="stat-label">Total citas</div>
+        <div class="stat-value" th:text="${dayStats.total}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Día pico</div>
+        <div class="stat-value" th:text="${dayStats.peakDay}">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Promedio por día</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(dayStats.avgPerDay, 1)}">0.0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Distribución semanal</div>
+        <div class="chart-box">
+          <canvas id="dayChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Detalle por día</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Día</th>
+              <th class="text-end">Citas</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${daySeries}">
+              <td th:text="${r.label}">Lunes</td>
+              <td class="text-end" th:text="${r.total}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(daySeries)}">
+              <td colspan="2" class="text-center text-muted py-3">Sin datos</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-3" th:if="${actions != null and !actions.isEmpty()}">
+    <div class="col-12">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Acciones sugeridas</div>
+        <div class="list-group list-group-flush">
+          <a class="list-group-item list-group-item-action px-0"
+             th:each="a : ${actions}"
+             th:href="@{${a.href}}">
+            <div class="fw-semibold" th:text="${a.title}">Acción</div>
+            <div class="text-muted small" th:text="${a.detail}">Detalle</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const series = [[${daySeries}]];
+    const labels = series.map(r => r.label);
+    const values = series.map(r => r.total);
+
+    const ctx = document.getElementById('dayChart');
+    if (ctx && window.Chart) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Citas',
+            data: values,
+            backgroundColor: 'rgba(15,157,136,0.6)',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          }
+        }
+      });
+    }
+  </script>
+</div>
+
+</html>

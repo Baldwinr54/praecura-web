@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Demanda por hora', 'Reportes', 'Distribución horaria de citas')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1 section-title">Demanda por hora</h5>
+        <div class="text-muted small">Identifica horas pico para ajustar personal y horarios.</div>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <form class="d-flex gap-2 align-items-center" th:action="@{/reports/hours}" method="get">
+          <input class="form-control form-control-sm" type="date" name="from" th:value="${from}">
+          <input class="form-control form-control-sm" type="date" name="to" th:value="${to}">
+          <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+        </form>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/hours/export.csv(from=${from}, to=${to})}">Exportar CSV</a>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/hours/export.xlsx(from=${from}, to=${to})}">Exportar XLSX</a>
+      </div>
+    </div>
+
+    <div class="stat-grid mt-3">
+      <div class="stat-card">
+        <div class="stat-label">Total citas</div>
+        <div class="stat-value" th:text="${hourStats.total}">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Hora pico</div>
+        <div class="stat-value" th:text="${hourStats.peakHour}">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Promedio por hora</div>
+        <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(hourStats.avgPerHour, 1)}">0.0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Distribución horaria</div>
+        <div class="chart-box">
+          <canvas id="hourChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Detalle por hora</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Hora</th>
+              <th class="text-end">Citas</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${byHour}">
+              <td th:text="|${r.hour < 10 ? '0' + r.hour : r.hour}:00|">08:00</td>
+              <td class="text-end" th:text="${r.total}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(byHour)}">
+              <td colspan="2" class="text-center text-muted py-3">Sin datos</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-3" th:if="${actions != null and !actions.isEmpty()}">
+    <div class="col-12">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Acciones sugeridas</div>
+        <div class="list-group list-group-flush">
+          <a class="list-group-item list-group-item-action px-0"
+             th:each="a : ${actions}"
+             th:href="@{${a.href}}">
+            <div class="fw-semibold" th:text="${a.title}">Acción</div>
+            <div class="text-muted small" th:text="${a.detail}">Detalle</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const rows = [[${byHour}]];
+    const hourMap = {};
+    rows.forEach(r => { hourMap[r.hour] = r.total; });
+
+    const labels = [];
+    const values = [];
+    for (let h = 0; h < 24; h += 1) {
+      labels.push(`${String(h).padStart(2, '0')}:00`);
+      values.push(hourMap[h] || 0);
+    }
+
+    const ctx = document.getElementById('hourChart');
+    if (ctx && window.Chart) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Citas',
+            data: values,
+            backgroundColor: 'rgba(15,157,136,0.6)',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          }
+        }
+      });
+    }
+  </script>
+</div>
+
+</html>

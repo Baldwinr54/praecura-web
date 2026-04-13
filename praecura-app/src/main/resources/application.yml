@@ -1,0 +1,167 @@
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    # Buenas prácticas: no mostrar detalles técnicos por defecto.
+    # Para ver stacktrace en DEV: agrega ?trace=true a la URL.
+    include-message: on_param
+    include-binding-errors: on_param
+    include-exception: false
+    include-stacktrace: on_param
+  servlet:
+    session:
+      timeout: 30m
+      tracking-modes: cookie
+      cookie:
+        http-only: true
+        secure: ${PRAECURA_SESSION_COOKIE_SECURE:false}
+        same-site: Lax
+  compression:
+    enabled: true
+    min-response-size: 2KB
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml
+
+spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
+
+  application:
+    name: PraeCura
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:praecura_db}
+    username: ${DB_USER:praecurauser}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${PRAECURA_DB_POOL_MAX:10}
+      minimum-idle: ${PRAECURA_DB_POOL_MIN_IDLE:4}
+      idle-timeout: ${PRAECURA_DB_IDLE_TIMEOUT_MS:300000}
+      max-lifetime: ${PRAECURA_DB_MAX_LIFETIME_MS:1700000}
+      connection-timeout: ${PRAECURA_DB_CONN_TIMEOUT_MS:30000}
+      validation-timeout: ${PRAECURA_DB_VALIDATION_TIMEOUT_MS:5000}
+      data-source-properties:
+        reWriteBatchedInserts: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate.jdbc.batch_size: 50
+      hibernate.order_inserts: true
+      hibernate.order_updates: true
+      hibernate.jdbc.fetch_size: 100
+      hibernate.default_batch_fetch_size: 100
+
+  thymeleaf:
+    cache: true
+
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: ${PRAECURA_STATIC_CACHE_MAX_AGE:PT1H}
+          cache-public: true
+
+  cache:
+    type: caffeine
+    cache-names: selectSpecialties,selectSites,selectDoctors,selectResources,selectResourcesBySite,selectPatients,selectServices,permissionCodesByUsername,permissionMatrix,activePermissions
+    caffeine:
+      spec: initialCapacity=64,maximumSize=2000,expireAfterWrite=10m,recordStats
+
+logging:
+  level:
+    org.springframework.security: INFO
+
+praecura:
+  app:
+    tagline: ${PRAECURA_APP_TAGLINE:Gestión Clínica Integral}
+
+  owner:
+    usernames: ${PRAECURA_OWNER_USERNAMES:admin}
+
+  ui:
+    # When true, the error page shows exception/root-cause details (recommended only for local/dev).
+    show-error-details: ${PRAECURA_SHOW_ERROR_DETAILS:false}
+
+  bootstrap:
+    admin:
+      enabled: ${PRAECURA_BOOTSTRAP_ADMIN_ENABLED:true}
+      username: ${PRAECURA_BOOTSTRAP_ADMIN_USERNAME:admin}
+      password: ${PRAECURA_BOOTSTRAP_ADMIN_PASSWORD:}
+
+  security:
+    remember-me-key: ${PRAECURA_REMEMBER_ME_KEY:}
+    trust-proxy: ${PRAECURA_TRUST_PROXY:false}
+
+  demo:
+    seed: ${PRAECURA_DEMO_SEED:false}
+    count: ${PRAECURA_DEMO_COUNT:50}
+    services: ${PRAECURA_DEMO_SERVICES:30}
+    doctors: ${PRAECURA_DEMO_DOCTORS:20}
+    patients: ${PRAECURA_DEMO_PATIENTS:100}
+    appointments: ${PRAECURA_DEMO_APPOINTMENTS:350}
+    sites: ${PRAECURA_DEMO_SITES:4}
+
+  audit:
+    # Retención de auditoría (días). Puede sobreescribirse por env var.
+    retention-days: ${PRAECURA_AUDIT_RETENTION_DAYS:180}
+
+  messaging:
+    # Cuando está desactivado, se registran recordatorios como SKIPPED.
+    enabled: ${PRAECURA_MESSAGING_ENABLED:false}
+    # Modos: disabled | log
+    mode: ${PRAECURA_MESSAGING_MODE:disabled}
+
+  billing:
+    # Moneda por defecto en facturación (ISO 4217).
+    currency: ${PRAECURA_BILLING_CURRENCY:DOP}
+    # ITBIS (18% por defecto en RD para servicios gravados).
+    tax-rate: ${PRAECURA_BILLING_TAX_RATE:0.18}
+    # Mensaje al pie en factura tipo ticket.
+    invoice-footer: ${PRAECURA_INVOICE_FOOTER:Gracias por su preferencia}
+    # Si está activo, requiere caja abierta para registrar pagos/reembolsos en efectivo.
+    require-cash-session: ${PRAECURA_REQUIRE_CASH_SESSION:true}
+    # Si está activo, obliga a tener NCF asignado antes de registrar cobros.
+    require-ncf-before-payment: ${PRAECURA_REQUIRE_NCF_BEFORE_PAYMENT:true}
+    # Usuarios autorizados para acciones sensibles (anular, reembolsar, secuencias fiscales y cierre de caja).
+    supervisor-usernames: ${PRAECURA_BILLING_SUPERVISOR_USERNAMES:admin}
+
+  company:
+    name: ${PRAECURA_COMPANY_NAME:Centro Clínico Integral}
+    trade-name: ${PRAECURA_COMPANY_TRADE_NAME:}
+    rnc: ${PRAECURA_COMPANY_RNC:}
+    address: ${PRAECURA_COMPANY_ADDRESS:}
+    phone: ${PRAECURA_COMPANY_PHONE:}
+    email: ${PRAECURA_COMPANY_EMAIL:}
+
+  public-base-url: ${PRAECURA_PUBLIC_BASE_URL:}
+
+  dgii:
+    enabled: ${PRAECURA_DGII_ENABLED:false}
+    # Modos soportados: mock | live
+    mode: ${PRAECURA_DGII_MODE:mock}
+    submit-url: ${PRAECURA_DGII_SUBMIT_URL:}
+    track-url: ${PRAECURA_DGII_TRACK_URL:}
+    api-key: ${PRAECURA_DGII_API_KEY:}
+    verify-base-url: ${PRAECURA_DGII_VERIFY_BASE_URL:https://ecf.dgii.gov.do/ecf/ConsultaTimbre}
+    poll-enabled: ${PRAECURA_DGII_POLL_ENABLED:true}
+    poll-fixed-delay-ms: ${PRAECURA_DGII_POLL_DELAY_MS:180000}
+    poll-batch-size: ${PRAECURA_DGII_POLL_BATCH_SIZE:30}
+    max-retries: ${PRAECURA_DGII_MAX_RETRIES:5}
+    retry-base-minutes: ${PRAECURA_DGII_RETRY_BASE_MINUTES:5}
+    mock-auto-accept: ${PRAECURA_DGII_MOCK_AUTO_ACCEPT:true}
+
+  cardnet:
+    enabled: ${PRAECURA_CARDNET_ENABLED:false}
+    base-url: ${PRAECURA_CARDNET_BASE_URL:}
+    authorize-url: ${PRAECURA_CARDNET_AUTHORIZE_URL:}
+    merchant-number: ${PRAECURA_CARDNET_MERCHANT_NUMBER:}
+    merchant-terminal: ${PRAECURA_CARDNET_MERCHANT_TERMINAL:}
+    acquiring-institution-code: ${PRAECURA_CARDNET_ACQUIRING_CODE:}
+    merchant-name: ${PRAECURA_CARDNET_MERCHANT_NAME:}
+    merchant-type: ${PRAECURA_CARDNET_MERCHANT_TYPE:}
+    currency-code: ${PRAECURA_CARDNET_CURRENCY_CODE:214}
+    page-language: ${PRAECURA_CARDNET_PAGE_LANGUAGE:ESP}
+    connect-timeout-ms: ${PRAECURA_CARDNET_CONNECT_TIMEOUT_MS:4000}
+    read-timeout-ms: ${PRAECURA_CARDNET_READ_TIMEOUT_MS:10000}

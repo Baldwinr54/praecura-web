@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: ${POSTGRES_CONTAINER_NAME:-praecura_postgres}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-praecura_db}
+      POSTGRES_USER: ${POSTGRES_USER:-praecurauser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-PraeCura123*}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - praecura_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-praecurauser} -d ${POSTGRES_DB:-praecura_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  praecura_pgdata:

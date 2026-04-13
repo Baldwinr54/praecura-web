@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:praecura_db;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+  thymeleaf:
+    cache: false
+
+server:
+  error:
+    include-exception: true
+
+praecura:
+  ui:
+    show-error-details: true
+  bootstrap:
+    admin:
+      enabled: true
+
+# Perfil local para ejecutar sin Postgres.
+# Uso: SPRING_PROFILES_ACTIVE=local

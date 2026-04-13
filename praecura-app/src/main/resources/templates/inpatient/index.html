@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Hospitalización', 'Clínico', 'Camas, admisiones, quirófano y enfermería')}">
+
+<div th:fragment="content">
+  <div class="row g-3">
+    <div class="col-12 col-xl-4">
+      <div class="card soft-card p-3 h-100">
+        <h6>Registrar cama</h6>
+        <form class="row g-2" th:action="@{/inpatient/beds}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <div class="col-md-6">
+            <select class="form-select" name="siteId" required>
+              <option value="">Sede</option>
+              <option th:each="s : ${sites}" th:value="${s.id}" th:text="${s.name}">Sede</option>
+            </select>
+          </div>
+          <div class="col-md-6"><input class="form-control" name="code" placeholder="Código" required></div>
+          <div class="col-md-6"><input class="form-control" name="ward" placeholder="Sala/área"></div>
+          <div class="col-md-6"><input class="form-control" name="bedType" placeholder="Tipo"></div>
+          <div class="col-12"><input class="form-control" name="notes" placeholder="Notas"></div>
+          <div class="col-12"><button class="btn btn-primary" type="submit">Guardar cama</button></div>
+        </form>
+
+        <hr>
+        <h6>Ingresar paciente</h6>
+        <form class="row g-2" th:action="@{/inpatient/admissions}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <div class="col-12">
+            <select class="form-select" name="patientId" required>
+              <option value="">Paciente</option>
+              <option th:each="p : ${patients}" th:value="${p.id}" th:text="${p.fullName}">Paciente</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <select class="form-select" name="bedId">
+              <option value="">Cama</option>
+              <option th:each="b : ${beds}" th:value="${b.id}" th:text="${b.site.name + ' - ' + b.code + ' (' + b.status.label() + ')'}">Cama</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <select class="form-select" name="doctorId">
+              <option value="">Médico</option>
+              <option th:each="d : ${doctors}" th:value="${d.id}" th:text="${d.fullName}">Doctor</option>
+            </select>
+          </div>
+          <div class="col-md-12"><input class="form-control" name="admissionReason" placeholder="Motivo de ingreso"></div>
+          <div class="col-md-12"><input class="form-control" type="datetime-local" name="expectedDischargeAt"></div>
+          <div class="col-12"><button class="btn btn-outline-primary" type="submit">Ingresar</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-8">
+      <div class="card soft-card p-3 mb-3">
+        <h6>Admisiones activas e historial</h6>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Paciente</th><th>Cama</th><th>Estado</th><th>Ingreso</th><th>Acción</th></tr></thead>
+            <tbody>
+            <tr th:each="a : ${admissions}">
+              <td th:text="${a.patient.fullName}">Paciente</td>
+              <td th:text="${a.bed != null ? a.bed.code : '—'}">Cama</td>
+              <td><span class="badge text-bg-light" th:text="${a.status.label()}">Estado</span></td>
+              <td th:text="${#temporals.format(a.admittedAt, 'yyyy-MM-dd HH:mm')}">Fecha</td>
+              <td>
+                <form class="d-flex gap-1" th:action="@{/inpatient/admissions/{id}/status(id=${a.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <select class="form-select form-select-sm" name="status">
+                    <option th:each="s : ${admissionStatuses}" th:value="${s}" th:selected="${s == a.status}" th:text="${s.label()}">Estado</option>
+                  </select>
+                  <button class="btn btn-sm btn-outline-primary" type="submit">OK</button>
+                </form>
+                <a class="btn btn-sm btn-link" th:href="@{/inpatient(admissionId=${a.id})}">Notas</a>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card soft-card p-3 mb-3">
+        <h6>Programar cirugía</h6>
+        <form class="row g-2" th:action="@{/inpatient/surgeries}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <div class="col-md-3">
+            <select class="form-select" name="patientId" required>
+              <option value="">Paciente</option>
+              <option th:each="p : ${patients}" th:value="${p.id}" th:text="${p.fullName}">Paciente</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" name="admissionId">
+              <option value="">Admisión</option>
+              <option th:each="a : ${admissions}" th:value="${a.id}" th:text="${'#' + a.id + ' - ' + a.patient.fullName}">Adm</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" name="doctorId">
+              <option value="">Médico</option>
+              <option th:each="d : ${doctors}" th:value="${d.id}" th:text="${d.fullName}">Doctor</option>
+            </select>
+          </div>
+          <div class="col-md-3"><input class="form-control" name="procedureName" placeholder="Procedimiento" required></div>
+          <div class="col-md-3">
+            <select class="form-select" name="siteId">
+              <option value="">Sede</option>
+              <option th:each="s : ${sites}" th:value="${s.id}" th:text="${s.name}">Sede</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" name="resourceId">
+              <option value="">Recurso</option>
+              <option th:each="r : ${resources}" th:value="${r.id}" th:text="${r.name}">Recurso</option>
+            </select>
+          </div>
+          <div class="col-md-3"><input class="form-control" name="anesthesiaType" placeholder="Anestesia"></div>
+          <div class="col-md-3"><input class="form-control" type="datetime-local" name="scheduledAt" required></div>
+          <div class="col-md-3"><input class="form-control" type="number" name="estimatedMinutes" placeholder="Minutos"></div>
+          <div class="col-md-9"><input class="form-control" name="notes" placeholder="Notas"></div>
+          <div class="col-12"><button class="btn btn-outline-primary" type="submit">Programar cirugía</button></div>
+        </form>
+
+        <div class="table-responsive mt-3">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Fecha</th><th>Paciente</th><th>Procedimiento</th><th>Estado</th><th>Acción</th></tr></thead>
+            <tbody>
+            <tr th:each="s : ${surgeries}">
+              <td th:text="${#temporals.format(s.scheduledAt, 'yyyy-MM-dd HH:mm')}">Fecha</td>
+              <td th:text="${s.patient.fullName}">Paciente</td>
+              <td th:text="${s.procedureName}">Proc</td>
+              <td><span class="badge text-bg-light" th:text="${s.status.label()}">Estado</span></td>
+              <td>
+                <form class="d-flex gap-1" th:action="@{/inpatient/surgeries/{id}/status(id=${s.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <select class="form-select form-select-sm" name="status">
+                    <option th:each="st : ${surgeryStatuses}" th:value="${st}" th:selected="${st == s.status}" th:text="${st.label()}">Estado</option>
+                  </select>
+                  <button class="btn btn-sm btn-outline-primary" type="submit">OK</button>
+                </form>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card soft-card p-3">
+        <h6>Notas de enfermería</h6>
+        <form class="row g-2" th:action="@{/inpatient/nursing-notes}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <div class="col-md-3">
+            <select class="form-select" name="admissionId" required>
+              <option value="">Admisión</option>
+              <option th:each="a : ${admissions}" th:value="${a.id}" th:text="${'#' + a.id + ' - ' + a.patient.fullName}">Adm</option>
+            </select>
+          </div>
+          <div class="col-md-2"><input class="form-control" name="shift" placeholder="Turno"></div>
+          <div class="col-md-7"><input class="form-control" name="vitalsSnapshot" placeholder="Signos resumidos"></div>
+          <div class="col-md-9"><textarea class="form-control" name="notes" rows="2" placeholder="Nota clínica de enfermería" required></textarea></div>
+          <div class="col-md-3"><input class="form-control" name="medicationAdministered" placeholder="Medicamento administrado"></div>
+          <div class="col-md-2">
+            <select class="form-select" name="adverseEvent">
+              <option value="false">Sin evento</option>
+              <option value="true">Evento adverso</option>
+            </select>
+          </div>
+          <div class="col-12"><button class="btn btn-outline-primary" type="submit">Registrar nota</button></div>
+        </form>
+
+        <ul class="list-group mt-3" th:if="${!#lists.isEmpty(nursingNotes)}">
+          <li class="list-group-item" th:each="n : ${nursingNotes}">
+            <div class="d-flex justify-content-between">
+              <strong th:text="${'Turno ' + n.shift}">Turno</strong>
+              <span class="text-muted small" th:text="${#temporals.format(n.recordedAt, 'yyyy-MM-dd HH:mm')}">Fecha</span>
+            </div>
+            <div th:text="${n.notes}">Nota</div>
+            <div class="small text-muted" th:text="${n.vitalsSnapshot}"></div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<div th:replace="~{fragments/layout :: layout(~{::content}, 'Citas', 'Citas', 'Programación clínica')}">
+  <div th:fragment="content">
+
+    <div class="page-actions">
+      <form class="search-row" th:action="@{/appointments}" method="get">
+        <input class="form-control search-input" type="text" name="q" placeholder="Buscar (paciente, motivo...)" th:value="${q}" />
+
+        <select class="form-select" name="doctorId" style="max-width: 260px">
+          <option value="" th:selected="${doctorId == null}">Todos los médicos</option>
+          <option th:each="d : ${doctors}" th:value="${d.id}" th:text="${d.fullName}" th:selected="${doctorId != null and doctorId == d.id}"></option>
+        </select>
+
+        <select class="form-select" name="siteId" style="max-width: 220px">
+          <option value="" th:selected="${siteId == null}">Todas las sedes</option>
+          <option th:each="s : ${sites}" th:value="${s.id}" th:text="${s.name}" th:selected="${siteId != null and siteId == s.id}"></option>
+        </select>
+
+        <select class="form-select" name="status" style="max-width: 220px">
+          <option value="" th:selected="${status == null}">Todos los estados</option>
+          <option th:each="st : ${statuses}" th:value="${st.name()}" th:text="${st.label()}" th:selected="${status != null and status.name() == st.name()}"></option>
+        </select>
+
+        <input class="form-control" type="date" name="date" style="max-width: 170px" th:value="${date}">
+
+        <input type="hidden" name="size" th:value="${size}">
+        <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
+        <a class="btn btn-ghost" th:href="@{/appointments}">Limpiar</a>
+      </form>
+
+      <a class="btn btn-primary" th:href="@{/appointments/new}">Nueva cita</a>
+    </div>
+
+    <div th:if="${appointmentsPage.totalElements == 0}" class="empty-state">
+      <div class="empty-state__box">
+        <div class="empty-state__title">No hay citas para mostrar</div>
+        <div class="empty-state__text">Crea tu primera cita o ajusta los filtros.</div>
+        <a class="btn btn-primary" th:href="@{/appointments/new}">Crear primera cita</a>
+      </div>
+    </div>
+
+    <div th:if="${appointmentsPage.totalElements > 0}" class="card soft-card p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+          <tr>
+            <th style="width: 80px">ID</th>
+            <th style="width: 140px">Fecha</th>
+            <th style="width: 110px">Hora</th>
+            <th>Paciente</th>
+            <th>Médico</th>
+            <th>Sede</th>
+            <th>Recurso</th>
+            <th>Servicio</th>
+            <th style="width: 170px">Estado</th>
+            <th style="width: 220px" class="text-end">Acciones</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="a : ${appointmentsPage.content}"
+              th:classappend="${a.service == null} ? 'table-warning' : ''">
+            <td th:text="${a.id}">1</td>
+            <td th:text="${a.scheduledAt != null ? #temporals.format(a.scheduledAt, 'yyyy-MM-dd') : '—'}">2026-01-13</td>
+            <td th:text="${a.scheduledAt != null ? #temporals.format(a.scheduledAt, 'HH:mm') : '—'}">10:00</td>
+            <td>
+              <div th:text="${a.patient != null ? a.patient.fullName : '-'}">Paciente</div>
+              <div class="small text-muted" th:if="${a.patient != null}">
+                <span class="badge text-bg-warning" th:if="${a.patient.phone == null or #strings.isEmpty(a.patient.phone)}">Sin teléfono</span>
+                <span class="badge text-bg-warning" th:if="${a.patient.email == null or #strings.isEmpty(a.patient.email)}">Sin email</span>
+                <span class="badge text-bg-danger" th:if="${!(a.patient.consentSms or a.patient.consentEmail or a.patient.consentWhatsapp)}">Sin consentimiento</span>
+                <span class="badge text-bg-info" th:if="${a.triageLevel != null}" th:text="${a.triageLevel.label()}">Prioridad</span>
+              </div>
+            </td>
+            <td th:text="${a.doctor != null ? a.doctor.fullName : '-'}">Médico</td>
+            <td th:text="${a.site != null ? a.site.name : '—'}">Sede</td>
+            <td th:text="${a.resource != null ? a.resource.name : '—'}">Recurso</td>
+            <td>
+              <span th:if="${a.service != null}" th:text="${a.service.name}">Servicio</span>
+              <span class="badge text-bg-danger" th:if="${a.service == null}">Falta servicio</span>
+            </td>
+            <td>
+              <span class="status-badge"
+                    th:classappend="| status-${a.status != null ? #strings.toLowerCase(a.status.name()) : 'programada'}|"
+                    th:text="${a.status != null ? a.status.label() : '—'}">Estado</span>
+            </td>
+            <td>
+              <div class="d-flex justify-content-end gap-2 flex-wrap">
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/appointments/{id}/edit(id=${a.id})}">Editar</a>
+                <a class="btn btn-sm btn-outline-info" th:if="${a.patient != null}" th:href="@{/patients/{id}/edit(id=${a.patient.id})}">
+                  Actualizar contacto
+                </a>
+
+                <a class="btn btn-sm btn-outline-primary" th:href="@{|/appointments/${a.id}/reschedule|}">Reprogramar</a>
+
+                <form th:action="@{/billing/invoices/create}" method="post" style="display:inline"
+                      data-confirm="¿Crear factura para esta cita usando cargos pendientes?">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <input type="hidden" name="appointmentId" th:value="${a.id}"/>
+                  <button class="btn btn-sm btn-outline-dark" type="submit">Facturar</button>
+                </form>
+                <a class="btn btn-sm btn-outline-secondary"
+                   th:if="${a.patient != null}"
+                   th:href="@{/billing/charges(patientId=${a.patient.id}, appointmentId=${a.id})}">
+                  Cargo
+                </a>
+
+                
+                <form th:if="${a.status != null and a.status.name() == 'PROGRAMADA'}"
+                      th:action="@{/appointments/{id}/confirm(id=${a.id})}" method="post" style="display:inline"
+                      data-confirm="¿Confirmar esta cita?">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-primary" type="submit">Confirmar</button>
+                </form>
+
+                <form th:if="${a.status != null and (a.status.name() == 'PROGRAMADA' or a.status.name() == 'CONFIRMADA')}"
+                      th:action="@{/appointments/{id}/remind(id=${a.id})}" method="post" style="display:inline"
+                      th:attr="data-confirm=${a.remindedAt == null ? '¿Enviar recordatorio de esta cita?' : '¿Reenviar recordatorio de esta cita?'}">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-success" type="submit"
+                          th:disabled="${a.patient != null and ((#strings.isEmpty(a.patient.phone) and #strings.isEmpty(a.patient.email)) or !(a.patient.consentSms or a.patient.consentEmail or a.patient.consentWhatsapp))}"
+                          th:text="${a.remindedAt == null ? 'Enviar recordatorio' : 'Reenviar recordatorio'}">Enviar recordatorio</button>
+                </form>
+
+                <form th:if="${a.status != null and (a.status.name() == 'PROGRAMADA' or a.status.name() == 'CONFIRMADA')}"
+                      th:action="@{/appointments/{id}/complete(id=${a.id})}" method="post" style="display:inline"
+                      data-confirm="¿Marcar como completada esta cita?">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-success" type="submit">Completar</button>
+                </form>
+
+                <form th:if="${a.status != null and (a.status.name() == 'PROGRAMADA' or a.status.name() == 'CONFIRMADA')}"
+                      th:action="@{/appointments/{id}/no-show(id=${a.id})}" method="post" style="display:inline"
+                      data-confirm="¿Marcar esta cita como no-show?">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-warning" type="submit">No-show</button>
+                </form>
+
+                <form th:if="${a.status != null and a.status.name() != 'CANCELADA'}" th:action="@{/appointments/{id}/cancel(id=${a.id})}" method="post" style="display:inline"
+                      data-confirm="¿Cancelar esta cita?">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <input type="hidden" name="q" th:value="${q}">
+                  <input type="hidden" name="doctorId" th:value="${doctorId}">
+                  <input type="hidden" name="siteId" th:value="${siteId}">
+                  <input type="hidden" name="status" th:value="${status != null ? status.name() : ''}">
+                  <input type="hidden" name="date" th:value="${date}">
+                  <input type="hidden" name="page" th:value="${appointmentsPage.number}">
+                  <input type="hidden" name="size" th:value="${size}">
+                  <button class="btn btn-sm btn-outline-danger" type="submit">Cancelar</button>
+                </form>
+
+                <form th:action="@{/appointments/{id}/delete(id=${a.id})}" method="post" style="display:inline"
+                      data-confirm="¿Archivar esta cita? (No se elimina físicamente)">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <input type="hidden" name="q" th:value="${q}">
+                  <input type="hidden" name="doctorId" th:value="${doctorId}">
+                  <input type="hidden" name="siteId" th:value="${siteId}">
+                  <input type="hidden" name="status" th:value="${status != null ? status.name() : ''}">
+                  <input type="hidden" name="date" th:value="${date}">
+                  <input type="hidden" name="page" th:value="${appointmentsPage.number}">
+                  <input type="hidden" name="size" th:value="${size}">
+                  <button class="btn btn-sm btn-outline-dark" type="submit">Archivar</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="text-muted small">
+          Mostrando <span th:text="${appointmentsPage.numberOfElements}"></span> de <span th:text="${appointmentsPage.totalElements}"></span>
+        </div>
+
+        <nav th:if="${appointmentsPage.totalPages > 1}">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item" th:classappend="${appointmentsPage.first} ? 'disabled' : ''">
+              <a class="page-link" th:href="@{/appointments(q=${q}, doctorId=${doctorId}, siteId=${siteId}, status=${status != null ? status.name() : null}, date=${date}, page=${appointmentsPage.number-1}, size=${size})}">Anterior</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, appointmentsPage.totalPages-1)}" th:classappend="${i == appointmentsPage.number} ? 'active' : ''">
+              <a class="page-link" th:href="@{/appointments(q=${q}, doctorId=${doctorId}, siteId=${siteId}, status=${status != null ? status.name() : null}, date=${date}, page=${i}, size=${size})}" th:text="${i+1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${appointmentsPage.last} ? 'disabled' : ''">
+              <a class="page-link" th:href="@{/appointments(q=${q}, doctorId=${doctorId}, siteId=${siteId}, status=${status != null ? status.name() : null}, date=${date}, page=${appointmentsPage.number+1}, size=${size})}">Siguiente</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

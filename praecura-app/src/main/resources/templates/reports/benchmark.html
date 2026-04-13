@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Benchmark', 'Reportes', 'Comparativo histórico')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1 section-title">Benchmark histórico</h5>
+        <div class="text-muted small">Comparación del rango actual vs. período anterior equivalente.</div>
+      </div>
+      <form class="d-flex gap-2 align-items-center" th:action="@{/reports/benchmark}" method="get">
+        <input class="form-control form-control-sm" type="date" name="from" th:value="${from}">
+        <input class="form-control form-control-sm" type="date" name="to" th:value="${to}">
+        <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="callout mb-3">
+    <strong>Rango actual:</strong>
+    <span th:text="|${from} → ${to}|">2026-01-01 → 2026-01-31</span>
+    <span class="ms-2">|</span>
+    <strong>Rango anterior:</strong>
+    <span th:text="|${prevFrom} → ${prevTo}|">2025-12-01 → 2025-12-31</span>
+  </div>
+
+  <div class="card soft-card p-3 mb-3">
+    <div class="fw-semibold mb-2">Resumen comparativo</div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+        <tr>
+          <th>Métrica</th>
+          <th class="text-end">Actual</th>
+          <th class="text-end">Anterior</th>
+          <th class="text-end">Δ%</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${benchRows}">
+          <td th:text="${r.label}">Total</td>
+          <td class="text-end" th:text="${r.currentValue}">0</td>
+          <td class="text-end" th:text="${r.previousValue}">0</td>
+          <td class="text-end">
+            <span class="metric-delta" th:classappend="${r.deltaPct < 0} ? ' down' : ' up'"
+                  th:text="|${r.deltaPct < 0 ? '-' : '+'}${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(r.deltaPct, 1)}%|">+0%</span>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Serie diaria (Actual vs. Anterior)</div>
+        <div class="chart-box">
+          <canvas id="benchmarkChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const current = [[${currentSeriesJs}]];
+    const previous = [[${previousSeriesJs}]];
+
+    const labels = current.map(r => r.day.toString());
+    const currentValues = current.map(r => r.total);
+    const previousValues = previous.map(r => r.total);
+
+    const ctx = document.getElementById('benchmarkChart');
+    if (ctx && window.Chart) {
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Actual', data: currentValues, borderColor: '#0f9d88', backgroundColor: 'rgba(15,157,136,0.12)', tension: 0.3 },
+            { label: 'Anterior', data: previousValues, borderColor: '#1e3a8a', backgroundColor: 'rgba(30,58,138,0.10)', tension: 0.3 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } }
+      });
+    }
+  </script>
+</div>
+
+</html>

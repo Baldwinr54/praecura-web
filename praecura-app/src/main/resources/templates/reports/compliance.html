@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Cumplimiento', 'Reportes', 'Control operativo y fiscal')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <form class="row g-2 align-items-end" th:action="@{/reports/compliance}" method="get">
+      <div class="col-md-3">
+        <label class="form-label">Usuario (eventos críticos)</label>
+        <input class="form-control" type="text" name="username" placeholder="Ej: admin" th:value="${username}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Desde</label>
+        <input class="form-control" type="date" name="from" th:value="${from}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Hasta</label>
+        <input class="form-control" type="date" name="to" th:value="${to}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Registros</label>
+        <input class="form-control" type="number" min="1" max="100" name="size" th:value="${size}">
+      </div>
+
+      <div class="col-md-3 d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Filtrar</button>
+        <a class="btn btn-ghost" th:href="@{/reports/compliance}">Limpiar</a>
+      </div>
+    </form>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+      <div class="small text-muted">
+        Reglas activas:
+        balance vencido &gt; <span th:text="${snapshot.overdueBalanceDays}">30</span> días,
+        caja abierta &gt; <span th:text="${snapshot.cashOpenMaxHours}">16</span> horas,
+        secuencia NCF por vencer ≤ <span th:text="${snapshot.fiscalExpiryWarningDays}">30</span> días,
+        secuencia casi agotada ≤ <span th:text="${snapshot.fiscalRemainingWarning}">25</span> números.
+      </div>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary"
+           th:href="@{/reports/compliance/export.csv(username=${username}, from=${from}, to=${to})}">
+          Exportar CSV
+        </a>
+        <a class="btn btn-outline-primary"
+           th:href="@{/reports/compliance/export.xlsx(username=${username}, from=${from}, to=${to})}">
+          Exportar XLSX
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-grid mb-3">
+    <div class="stat-card">
+      <div class="stat-label">Eventos críticos</div>
+      <div class="stat-value" th:text="${snapshot.criticalActionsCount}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">NCF pendientes</div>
+      <div class="stat-value" th:text="${snapshot.pendingNcfCount}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Cobradas sin NCF</div>
+      <div class="stat-value" th:text="${snapshot.collectedWithoutNcfCount}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Balances vencidos</div>
+      <div class="stat-value" th:text="${snapshot.overdueBalanceCount}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Cajas abiertas</div>
+      <div class="stat-value" th:text="${snapshot.longOpenCashCount}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">NCF por vencer</div>
+      <div class="stat-value" th:text="${snapshot.fiscalExpiringCount}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">NCF casi agotadas</div>
+      <div class="stat-value" th:text="${snapshot.fiscalNearExhaustionCount}">0</div>
+    </div>
+  </div>
+
+  <div class="card soft-card p-0 mb-3">
+    <div class="p-3 border-bottom">
+      <h5 class="mb-1">Hallazgos de cumplimiento</h5>
+      <div class="small text-muted">Lista priorizada de incidencias operativas y fiscales.</div>
+    </div>
+
+    <div th:if="${#lists.isEmpty(findings)}" class="p-4 text-muted">
+      Sin hallazgos para las reglas actuales.
+    </div>
+
+    <div th:if="${!#lists.isEmpty(findings)}" class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+        <tr>
+          <th style="width:110px">Nivel</th>
+          <th style="width:130px">Categoría</th>
+          <th style="width:190px">Código</th>
+          <th>Detalle</th>
+          <th style="width:230px">Referencia</th>
+          <th style="width:110px">Acción</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="f : ${findings}">
+          <td>
+            <span class="badge"
+                  th:classappend="${f.level == 'ALTA'} ? ' text-bg-danger' : (${f.level == 'MEDIA'} ? ' text-bg-warning' : ' text-bg-secondary')"
+                  th:text="${f.level}">ALTA</span>
+          </td>
+          <td th:text="${f.category}">Facturación</td>
+          <td><span class="font-monospace" th:text="${f.code}">NCF_PENDIENTE</span></td>
+          <td th:text="${f.detail}">Detalle</td>
+          <td th:text="${f.reference}">Referencia</td>
+          <td>
+            <a th:if="${f.href != null and f.href != ''}" class="btn btn-sm btn-outline-primary" th:href="@{${f.href}}">Abrir</a>
+            <span th:if="${f.href == null or f.href == ''}" class="text-muted">-</span>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card soft-card p-0">
+    <div class="p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1">Eventos críticos (auditoría)</h5>
+        <div class="small text-muted">Acciones sensibles ejecutadas en el período.</div>
+      </div>
+      <div class="small text-muted">Total: <span th:text="${criticalEventsPage.totalElements}">0</span></div>
+    </div>
+
+    <div th:if="${criticalEventsPage.totalElements == 0}" class="p-4 text-muted">
+      Sin eventos críticos para los filtros actuales.
+    </div>
+
+    <div th:if="${criticalEventsPage.totalElements > 0}" class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+        <tr>
+          <th style="width:165px">Fecha</th>
+          <th style="width:130px">Usuario</th>
+          <th style="width:220px">Acción</th>
+          <th style="width:130px">Entidad</th>
+          <th style="width:90px">ID</th>
+          <th style="width:120px">IP</th>
+          <th>Detalle</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="l : ${criticalEventsPage.content}">
+          <td th:text="${#temporals.format(l.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 10:00</td>
+          <td th:text="${l.username != null ? l.username : '-'}">admin</td>
+          <td><span class="font-monospace" th:text="${l.action}">INVOICE_VOIDED</span></td>
+          <td th:text="${l.entity != null ? l.entity : '-'}">Invoice</td>
+          <td th:text="${l.entityId != null ? l.entityId : '-'}">1</td>
+          <td th:text="${l.ipAddress != null ? l.ipAddress : '-'}">127.0.0.1</td>
+          <td th:text="${l.detail != null ? #strings.abbreviate(l.detail, 90) : '-'}">Detalle</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2"
+         th:if="${criticalEventsPage.totalPages > 1}">
+      <div class="text-muted small">
+        Mostrando <span th:text="${criticalEventsPage.numberOfElements}"></span> de
+        <span th:text="${criticalEventsPage.totalElements}"></span>
+      </div>
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item" th:classappend="${criticalEventsPage.first} ? 'disabled' : ''">
+            <a class="page-link"
+               th:href="@{/reports/compliance(username=${username}, from=${from}, to=${to}, page=${criticalEventsPage.number-1}, size=${size})}">
+              Anterior
+            </a>
+          </li>
+
+          <li class="page-item"
+              th:each="i : ${#numbers.sequence(0, criticalEventsPage.totalPages-1)}"
+              th:classappend="${i == criticalEventsPage.number} ? 'active' : ''">
+            <a class="page-link"
+               th:href="@{/reports/compliance(username=${username}, from=${from}, to=${to}, page=${i}, size=${size})}"
+               th:text="${i+1}">1</a>
+          </li>
+
+          <li class="page-item" th:classappend="${criticalEventsPage.last} ? 'disabled' : ''">
+            <a class="page-link"
+               th:href="@{/reports/compliance(username=${username}, from=${from}, to=${to}, page=${criticalEventsPage.number+1}, size=${size})}">
+              Siguiente
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+</html>

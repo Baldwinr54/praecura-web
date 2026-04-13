@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Factura fiscal</title>
+  <style>
+    :root {
+      --ink: #161616;
+      --muted: #5f5f5f;
+      --line: #d7d7d7;
+      --bg: #ffffff;
+      --soft: #f7f7f7;
+    }
+
+    @page ticket {
+      size: 80mm auto;
+      margin: 3mm;
+    }
+
+    @page a4 {
+      size: A4;
+      margin: 10mm;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.35;
+    }
+
+    body.layout-ticket {
+      page: ticket;
+      width: 74mm;
+      font-family: "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+      font-size: 11px;
+    }
+
+    body.layout-a4 {
+      page: a4;
+      max-width: 190mm;
+      margin: 0 auto;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-size: 12px;
+    }
+
+    .document {
+      background: var(--bg);
+    }
+
+    body.layout-ticket .document {
+      border: 1px dashed var(--line);
+      border-radius: 6px;
+      padding: 9px;
+    }
+
+    body.layout-a4 .document {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .tiny {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .strong {
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 10px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .header-right {
+      min-width: 180px;
+      text-align: right;
+    }
+
+    .company-name {
+      font-size: 24px;
+      line-height: 1.05;
+      letter-spacing: 0.01em;
+    }
+
+    .company-meta {
+      margin-top: 2px;
+    }
+
+    body.layout-ticket .header {
+      display: block;
+      text-align: center;
+    }
+
+    body.layout-ticket .header-right {
+      min-width: 0;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    body.layout-ticket .company-name {
+      font-size: 34px;
+      line-height: 0.98;
+      margin-bottom: 3px;
+      text-align: center;
+    }
+
+    body.layout-ticket .company-meta {
+      text-align: center;
+    }
+
+    body.layout-ticket .company {
+      margin-bottom: 6px;
+    }
+
+    body.layout-ticket .header-right .row {
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .section {
+      margin-top: 8px;
+      border-top: 1px dashed var(--line);
+      padding-top: 6px;
+    }
+
+    body.layout-a4 .section {
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .row + .row {
+      margin-top: 2px;
+    }
+
+    .wrap {
+      word-break: break-word;
+    }
+
+    .party-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    body.layout-ticket .party-grid {
+      display: block;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th, td {
+      padding: 3px 1px;
+      vertical-align: top;
+    }
+
+    th {
+      text-transform: uppercase;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      border-bottom: 1px dashed var(--line);
+      padding-bottom: 4px;
+    }
+
+    body.layout-a4 th {
+      border-bottom: 1px solid var(--line);
+    }
+
+    td.right, th.right {
+      text-align: right;
+      white-space: nowrap;
+      padding-left: 6px;
+    }
+
+    td.desc-col {
+      padding-right: 4px;
+    }
+
+    .w-desc { width: 48%; }
+    .w-qty { width: 12%; }
+    .w-unit { width: 20%; }
+    .w-total { width: 20%; }
+
+    body.layout-ticket .w-desc { width: 34%; }
+    body.layout-ticket .w-qty { width: 10%; }
+    body.layout-ticket .w-unit { width: 26%; }
+    body.layout-ticket .w-total { width: 30%; }
+
+    body.layout-ticket table td {
+      font-size: 10px;
+    }
+
+    .totals {
+      margin-left: auto;
+      width: 100%;
+    }
+
+    body.layout-a4 .totals {
+      width: 280px;
+    }
+
+    .totals .row {
+      padding: 1px 0;
+    }
+
+    .total-line {
+      margin-top: 4px;
+      border-top: 1px solid var(--ink);
+      padding-top: 4px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .qr-grid {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    body.layout-ticket .qr-grid {
+      display: block;
+      text-align: center;
+    }
+
+    .qr-box {
+      flex: 0 0 auto;
+      text-align: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px;
+      background: var(--soft);
+    }
+
+    .qr-img {
+      display: block;
+      width: 136px;
+      height: 136px;
+      margin: 0 auto;
+      object-fit: cover;
+      background: #fff;
+    }
+
+    body.layout-ticket .qr-img {
+      width: 118px;
+      height: 118px;
+    }
+
+    .footer {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .ticket-only {
+      display: block;
+    }
+
+    .a4-only {
+      display: block;
+    }
+
+    body.layout-ticket .a4-only {
+      display: none !important;
+    }
+
+    body.layout-a4 .ticket-only {
+      display: none !important;
+    }
+
+    @media print {
+      body.layout-ticket .document,
+      body.layout-a4 .document {
+        border: 0;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body th:class="|layout-${printLayout}|">
+<div class="document">
+  <div class="header">
+    <div class="company">
+      <h2 class="company-name" th:text="${companyName != null and !#strings.isEmpty(companyName) ? companyName : 'Centro Clínico Integral'}">Centro Clínico Integral</h2>
+      <div class="tiny" th:if="${companyTradeName != null and !#strings.isEmpty(companyTradeName)}"
+           th:text="${companyTradeName}">Nombre comercial</div>
+      <div class="company-meta">
+        <div class="tiny" th:if="${companyRnc != null and !#strings.isEmpty(companyRnc)}">
+          RNC: <span th:text="${companyRnc}">000000000</span>
+        </div>
+        <div class="tiny wrap" th:if="${companyAddress != null and !#strings.isEmpty(companyAddress)}"
+             th:text="${companyAddress}">Dirección fiscal</div>
+        <div class="tiny" th:if="${companyPhone != null and !#strings.isEmpty(companyPhone)}">
+          Tel.: <span th:text="${companyPhone}">809-000-0000</span>
+        </div>
+        <div class="tiny" th:if="${companyEmail != null and !#strings.isEmpty(companyEmail)}"
+             th:text="${companyEmail}">facturacion@empresa.do</div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="row"><span class="muted">Factura #</span><span class="strong" th:text="${invoice.id}">0</span></div>
+      <div class="row"><span class="muted">Emisión</span><span th:text="${#temporals.format(invoice.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 10:00</span></div>
+      <div class="row" th:if="${invoice.invoiceType != null}">
+        <span class="muted">Documento</span><span th:text="${invoice.invoiceType.label()}">Factura</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="party-grid">
+      <div>
+        <div class="strong">Datos del cliente</div>
+        <div class="row"><span class="muted">Nombre</span><span class="wrap right"
+            th:text="${invoice.fiscalName != null ? invoice.fiscalName : (invoice.patient != null ? invoice.patient.fullName : 'Público general')}">Cliente</span></div>
+        <div class="row" th:if="${invoice.fiscalTaxId != null and !#strings.isEmpty(invoice.fiscalTaxId)}">
+          <span class="muted">RNC/Cédula</span><span th:text="${invoice.fiscalTaxId}">000000000</span>
+        </div>
+        <div class="row" th:if="${invoice.fiscalAddress != null and !#strings.isEmpty(invoice.fiscalAddress)}">
+          <span class="muted">Dirección</span><span class="wrap right" th:text="${invoice.fiscalAddress}">Dirección cliente</span>
+        </div>
+        <div class="row" th:if="${printLayout == 'a4' and invoice.patient != null and invoice.patient.phone != null and !#strings.isEmpty(invoice.patient.phone)}">
+          <span class="muted">Teléfono</span><span th:text="${invoice.patient.phone}">8090000000</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="strong">Comprobante fiscal</div>
+        <div class="row">
+          <span class="muted">NCF / e-NCF</span>
+          <span class="strong" th:text="${fiscalDocumentNumber != null ? fiscalDocumentNumber : 'Pendiente'}">B0100000001</span>
+        </div>
+        <div class="row" th:if="${invoice.ncfType != null}">
+          <span class="muted">Tipo de NCF</span><span th:text="${invoice.ncfType}">B01</span>
+        </div>
+        <div class="row" th:if="${invoice.ncfIssuedAt != null}">
+          <span class="muted">Fecha NCF</span><span th:text="${#temporals.format(invoice.ncfIssuedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 10:05</span>
+        </div>
+        <div class="row" th:if="${ecf != null and ecf.eNcf != null}">
+          <span class="muted">e-NCF</span><span class="strong" th:text="${ecf.eNcf}">E31...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <table>
+      <thead>
+      <tr>
+        <th class="w-desc">Descripción</th>
+        <th class="w-qty right">Cant.</th>
+        <th class="w-unit right">P. U.</th>
+        <th class="w-total right">Total</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="it : ${invoice.items}">
+        <td class="wrap desc-col" th:text="${it.description}">Consulta médica</td>
+        <td class="right" th:text="${it.quantity}">1</td>
+        <td class="right" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(it.unitPrice)}">RD$ 0.00</td>
+        <td class="right" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(it.total)}">RD$ 0.00</td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(invoice.items)}">
+        <td colspan="4" class="muted">Sin conceptos registrados.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="totals">
+      <div class="row"><span>Subtotal</span><span th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(invoice.subtotal)}">RD$ 0.00</span></div>
+      <div class="row"><span>ITBIS</span><span th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(invoice.tax)}">RD$ 0.00</span></div>
+      <div class="row"><span>Descuento</span><span th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(invoice.discount)}">RD$ 0.00</span></div>
+      <div class="row total-line"><span>Total</span><span th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(invoice.total)}">RD$ 0.00</span></div>
+      <div class="row strong"><span>Saldo</span><span th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(invoice.balance)}">RD$ 0.00</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="strong">Pagos registrados</div>
+    <table>
+      <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Método</th>
+        <th class="a4-only">Canal</th>
+        <th class="a4-only">Referencia</th>
+        <th class="right">Monto</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="p : ${payments}">
+        <td th:text="${#temporals.format(p.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 10:00</td>
+        <td th:text="${p.provider != null and !#strings.isEmpty(p.provider) ? ((p.method != null ? p.method.label() : '—') + ' · ' + p.provider) : (p.method != null ? p.method.label() : '—')}">Tarjeta</td>
+        <td class="a4-only" th:text="${p.channel != null ? p.channel.label() : '—'}">Presencial</td>
+        <td class="a4-only wrap" th:text="${p.externalId != null ? p.externalId : (p.rrn != null ? p.rrn : '—')}">REF</td>
+        <td class="right" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(p.amount)}">RD$ 0.00</td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(payments)}">
+        <td th:attr="colspan=${printLayout == 'a4' ? 5 : 3}" class="muted">Sin pagos registrados.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="qr-grid">
+      <div>
+        <div class="strong">Verificación fiscal</div>
+        <div class="tiny" th:if="${qrImageUrl != null}">
+          Comprobante fiscal válido para fines tributarios en República Dominicana.
+        </div>
+        <div class="tiny" th:if="${fiscalDocumentNumber == null}">
+          NCF/e-NCF pendiente de emisión.
+        </div>
+        <div class="tiny" th:if="${qrImageUrl != null}">
+          Escanea el código QR para consultar en DGII.
+        </div>
+        <div class="tiny" th:if="${qrImageUrl == null and fiscalDocumentNumber != null}">
+          El código QR estará disponible cuando DGII publique la URL de verificación.
+        </div>
+        <div class="tiny a4-only wrap" th:if="${ecf != null and ecf.verificationUrl != null}" th:text="${ecf.verificationUrl}">https://ecf.dgii.gov.do/...</div>
+      </div>
+      <div class="qr-box" th:if="${qrImageUrl != null}">
+        <img class="qr-img" th:src="${qrImageUrl}" alt="Código QR fiscal" />
+        <div class="tiny">Código QR</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div th:text="${invoiceFooter != null and !#strings.isEmpty(invoiceFooter) ? invoiceFooter : 'Gracias por su preferencia'}">
+      Gracias por su preferencia
+    </div>
+    <div class="ticket-only">Representación térmica 80 mm.</div>
+    <div class="a4-only">Representación impresa A4 para archivo administrativo.</div>
+  </div>
+</div>
+
+<script>
+  window.print();
+</script>
+</body>
+</html>

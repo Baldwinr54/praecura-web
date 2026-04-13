@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<div th:replace="~{fragments/layout :: layout(~{::content}, 'Usuarios', 'Usuarios', 'Accesos y roles')}">
+  <div th:fragment="content">
+
+    <div th:if="${tempPassword != null}" class="alert alert-warning">
+      <strong th:text="${'Contraseña temporal para ' + (tempPasswordUser != null ? tempPasswordUser : 'usuario') + ':'}"></strong>
+      <span class="ms-2" th:text="${tempPassword}"></span>
+      <div class="small mt-2">Entrégala al usuario de forma segura. El sistema marcará el usuario para que cambie la contraseña al próximo acceso.</div>
+    </div>
+
+    <div class="page-actions">
+      <form id="userSearchForm" class="search-row" method="get" th:action="@{/admin/users}" role="search">
+        <input id="userSearchInput" class="form-control search-input" type="search" name="q" th:value="${q}" placeholder="Buscar por usuario" />
+        <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+        <a class="btn btn-outline-secondary" th:href="@{/admin/users}">Limpiar</a>
+      </form>
+
+      <a class="btn btn-primary" th:href="@{/admin/users/new}">Nuevo usuario</a>
+    </div>
+
+    <div class="card soft-card p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+          <tr>
+            <th style="width: 90px;">ID</th>
+            <th>Usuario</th>
+            <th>Rol</th>
+            <th style="width: 150px;">Activo</th>
+            <th style="width: 360px;">Acciones</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="u : ${users}">
+            <td th:text="${u.id}"></td>
+            <td th:text="${u.username}"></td>
+            <td>
+              <span class="badge rounded-pill bg-secondary"
+                    th:text="${u.role != null ? #strings.replace(u.role.name, 'ROLE_', '') : '—'}"></span>
+            </td>
+            <td>
+              <span class="badge rounded-pill"
+                    th:classappend="${u.enabled} ? ' bg-success' : ' bg-secondary'"
+                    th:text="${u.enabled} ? 'Sí' : 'No'"></span>
+              <span th:if="${u.lockedNow}" class="badge rounded-pill bg-warning text-dark ms-2">Bloqueado</span>
+              <span th:if="${u.forcePasswordChange}" class="badge rounded-pill bg-info text-dark ms-2">Debe cambiar</span>
+            </td>
+            <td>
+              <div class="d-flex justify-content-end gap-2 flex-wrap">
+
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/users/{id}/edit(id=${u.id})}">Editar</a>
+
+                <!-- Activar/Desactivar -->
+                <form method="post" th:action="@{/admin/users/{id}/toggle(id=${u.id})}" style="display:inline"
+                      th:attr="data-confirm=${u.enabled} ? '¿Desactivar este usuario?' : '¿Activar este usuario?'">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm"
+                          th:classappend="${u.enabled} ? ' btn-outline-warning' : ' btn-outline-success'"
+                          th:text="${u.enabled} ? 'Desactivar' : 'Activar'"
+                          th:disabled="${#authentication != null and #strings.equalsIgnoreCase(u.username, #authentication.name) and u.enabled}">
+                  </button>
+                </form>
+
+                <!-- Reset password (temporal) -->
+                <form th:if="${!u.superAdmin}" th:action="@{/admin/users/{id}/reset-password(id=${u.id})}" method="post" style="display:inline"
+                      data-confirm="¿Generar contraseña temporal para este usuario?">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-warning" type="submit">Reset</button>
+                </form>
+
+                <!-- Desbloquear -->
+                <form th:if="${u.lockedNow}" method="post" th:action="@{/admin/users/{id}/unlock(id=${u.id})}" style="display:inline"
+                      data-confirm="¿Desbloquear este usuario ahora?">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-warning" type="submit">Desbloquear</button>
+                </form>
+
+                <!-- Eliminar definitivo -->
+                <form method="post" th:action="@{/admin/users/{id}/delete(id=${u.id})}" style="display:inline"
+                      data-confirm="¿Eliminar definitivamente este usuario? Esta acción no se puede deshacer."
+                      th:attr="data-confirm-text=${u.username}"
+                      th:if="${!u.superAdmin and (#authentication == null or !#strings.equalsIgnoreCase(u.username, #authentication.name))}">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
+                </form>
+
+              </div>
+            </td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(users)}">
+            <td colspan="5" class="text-center py-4">No hay usuarios para mostrar.</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('userSearchForm');
+        const input = document.getElementById('userSearchInput');
+        if (!form || !input) return;
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (form.requestSubmit) form.requestSubmit();
+            else form.submit();
+          }
+        });
+      });
+    </script>
+
+  </div>
+</div>
+</body>
+</html>

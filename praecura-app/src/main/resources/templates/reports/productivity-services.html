@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Productividad servicios', 'Reportes', 'Eficiencia por servicio')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1 section-title">Productividad por servicio</h5>
+        <div class="text-muted small">Eficiencia y tiempos promedio por servicio.</div>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <form class="d-flex gap-2 align-items-center" th:action="@{/reports/productivity/services}" method="get">
+          <input class="form-control form-control-sm" type="date" name="from" th:value="${from}">
+          <input class="form-control form-control-sm" type="date" name="to" th:value="${to}">
+          <input type="hidden" name="limit" th:value="${limit}">
+          <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+        </form>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/productivity/services/export.csv(from=${from}, to=${to})}">Exportar CSV</a>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/productivity/services/export.xlsx(from=${from}, to=${to})}">Exportar XLSX</a>
+        <a class="btn btn-sm btn-outline-secondary" th:href="@{/reports/productivity}">Ver productividad médicos</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-grid mb-3">
+    <div class="stat-card">
+      <div class="stat-label">Promedio eficiencia</div>
+      <div class="stat-value" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(avgCompletion, 1)}%|">0%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Servicios en alerta</div>
+      <div class="stat-value" th:text="${alerts != null ? alerts.size() : 0}">0</div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3" th:if="${alerts != null and !alerts.isEmpty()}">
+    <div class="col-12">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Alertas rápidas</div>
+        <ul class="mb-0">
+          <li th:each="a : ${alerts}" th:text="${a.message}">Alerta</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3" th:if="${actions != null and !actions.isEmpty()}">
+    <div class="col-12">
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Acciones sugeridas</div>
+        <div class="list-group list-group-flush">
+          <a class="list-group-item list-group-item-action px-0"
+             th:each="a : ${actions}"
+             th:href="@{${a.href}}">
+            <div class="fw-semibold" th:text="${a.title}">Acción</div>
+            <div class="text-muted small" th:text="${a.detail}">Detalle</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Eficiencia por servicio (completadas / total)</div>
+        <div class="chart-box">
+          <canvas id="serviceProdChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Top servicios</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Servicio</th>
+              <th class="text-end">Total</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${topRows}">
+              <td th:text="${r.serviceName}">Servicio</td>
+              <td class="text-end" th:text="${r.total}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(topRows)}">
+              <td colspan="2" class="text-center text-muted py-3">Sin datos</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card soft-card p-3 mt-3">
+    <div class="fw-semibold mb-2">Detalle por servicio</div>
+    <div class="text-muted small mb-2" th:if="${totalRows != null}">
+      Mostrando <span th:text="${showingRows}">0</span> de <span th:text="${totalRows}">0</span>
+      <a class="ms-2" th:if="${limited}" th:href="@{/reports/productivity/services(from=${from}, to=${to}, limit=0)}">Mostrar todo</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+        <tr>
+          <th>Servicio</th>
+          <th class="text-end">Total</th>
+          <th class="text-end">Completadas</th>
+          <th class="text-end">Canceladas</th>
+          <th class="text-end">No-show</th>
+          <th class="text-end">Eficiencia</th>
+          <th class="text-end">Cancelación</th>
+          <th class="text-end">No-show</th>
+          <th class="text-end">Δ vs prom.</th>
+          <th class="text-end">Duración prom.</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${tableRows}"
+            th:classappend="${r.highCancel or r.highNoShow or r.lowCompletion} ? 'table-warning' : ''">
+          <td th:text="${r.serviceName}">Servicio</td>
+          <td class="text-end" th:text="${r.total}">0</td>
+          <td class="text-end" th:text="${r.completed}">0</td>
+          <td class="text-end" th:text="${r.cancelled}">0</td>
+          <td class="text-end" th:text="${r.noShow}">0</td>
+          <td class="text-end" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(r.completionRate, 1)}%|">0%</td>
+          <td class="text-end" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(r.cancelRate, 1)}%|">0%</td>
+          <td class="text-end" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(r.noShowRate, 1)}%|">0%</td>
+          <td class="text-end" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(r.completionDelta, 1)}%|">0%</td>
+          <td class="text-end" th:text="|${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(r.avgDuration, 1)} min|">0</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(tableRows)}">
+          <td colspan="10" class="text-center text-muted py-3">Sin datos</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const rows = [[${chartRows}]];
+    const labels = rows.map(r => r.serviceName);
+    const values = rows.map(r => r.completionRate);
+
+    const ctx = document.getElementById('serviceProdChart');
+    if (ctx && window.Chart) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Eficiencia (%)',
+            data: values,
+            backgroundColor: 'rgba(15,157,136,0.6)',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, max: 100, ticks: { precision: 0 } }
+          }
+        }
+      });
+    }
+  </script>
+</div>
+
+</html>

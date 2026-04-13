@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<div th:replace="~{fragments/layout :: layout(~{::content}, 'Servicios', 'Servicios', 'Procedimientos y tarifas')}">
+  <div th:fragment="content">
+
+    <div class="page-actions">
+      <form class="search-row" th:action="@{/services}" method="get" role="search">
+        <input class="form-control search-input" type="text" name="q" placeholder="Buscar (nombre...)" th:value="${q}">
+        <input type="hidden" name="size" th:value="${size}">
+        <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+        <a class="btn btn-ghost" th:href="@{/services}">Limpiar</a>
+      </form>
+
+      <a class="btn btn-primary" th:href="@{/services/new}">Nuevo servicio</a>
+    </div>
+
+    <div th:if="${servicesPage.totalElements == 0}" class="empty-state">
+      <div class="empty-state__box">
+        <div class="empty-state__title">No hay servicios registrados</div>
+        <div class="empty-state__text">Crea servicios con duración para estandarizar citas.</div>
+        <a class="btn btn-primary" th:href="@{/services/new}">Crear primer servicio</a>
+      </div>
+    </div>
+
+    <div th:if="${servicesPage.totalElements > 0}" class="card soft-card p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+          <tr>
+            <th style="width:80px">ID</th>
+            <th>Nombre</th>
+            <th style="width:160px">Duración</th>
+            <th style="width:160px">Precio</th>
+            <th style="width:220px" class="text-end">Acciones</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="s : ${servicesPage.content}">
+            <td th:text="${s.id}"></td>
+            <td th:text="${s.name}"></td>
+            <td th:text="${T(com.baldwin.praecura.util.UiFormatters).formatDuration(s.durationMinutes)}"></td>
+            <td th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(s.price)}"></td>
+            <td>
+              <div class="d-flex justify-content-end gap-2 flex-wrap">
+                <a class="btn btn-sm btn-outline-secondary" th:href="@{/services/{id}/edit(id=${s.id})}">Editar</a>
+                <form th:action="@{/services/{id}/deactivate(id=${s.id})}" method="post" style="display:inline" data-confirm="¿Desactivar este servicio?">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <input type="hidden" name="q" th:value="${q}">
+                  <input type="hidden" name="page" th:value="${servicesPage.number}">
+                  <input type="hidden" name="size" th:value="${size}">
+                  <button class="btn btn-sm btn-danger" type="submit">Desactivar</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="text-muted small">Mostrando <span th:text="${servicesPage.numberOfElements}"></span> de <span th:text="${servicesPage.totalElements}"></span></div>
+        <nav th:if="${servicesPage.totalPages > 1}">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item" th:classappend="${servicesPage.first} ? 'disabled' : ''">
+              <a class="page-link" th:href="@{/services(q=${q}, page=${servicesPage.number-1}, size=${size})}">Anterior</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, servicesPage.totalPages-1)}" th:classappend="${i == servicesPage.number} ? 'active' : ''">
+              <a class="page-link" th:href="@{/services(q=${q}, page=${i}, size=${size})}" th:text="${i+1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${servicesPage.last} ? 'disabled' : ''">
+              <a class="page-link" th:href="@{/services(q=${q}, page=${servicesPage.number+1}, size=${size})}">Siguiente</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Farmacia e Inventario', 'Operación', 'Dispensación, stock y compras')}">
+
+<div th:fragment="content">
+  <div class="stat-grid mb-3">
+    <div class="stat-card">
+      <div class="stat-label">Ítems activos</div>
+      <div class="stat-value" th:text="${#lists.size(items)}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Bajo stock</div>
+      <div class="stat-value" th:text="${#lists.size(lowStockItems)}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Órdenes de compra</div>
+      <div class="stat-value" th:text="${#lists.size(purchaseOrders)}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Dispensaciones</div>
+      <div class="stat-value" th:text="${#lists.size(dispensations)}">0</div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-xl-4">
+      <div class="card soft-card p-3 h-100">
+        <h6>Crear ítem</h6>
+        <form class="row g-2" th:action="@{/pharmacy/items}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <div class="col-md-4"><input class="form-control" name="sku" placeholder="SKU"></div>
+          <div class="col-md-8"><input class="form-control" name="name" placeholder="Nombre" required></div>
+          <div class="col-md-6"><input class="form-control" name="category" placeholder="Categoría"></div>
+          <div class="col-md-6"><input class="form-control" name="presentation" placeholder="Presentación"></div>
+          <div class="col-md-4"><input class="form-control" name="unit" placeholder="Unidad"></div>
+          <div class="col-md-4"><input class="form-control" type="number" step="0.01" name="costPrice" placeholder="Costo"></div>
+          <div class="col-md-4"><input class="form-control" type="number" step="0.01" name="salePrice" placeholder="Precio"></div>
+          <div class="col-md-6"><input class="form-control" type="number" step="0.0001" name="taxRate" placeholder="Tasa ITBIS (%)"></div>
+          <div class="col-md-6"><input class="form-control" type="number" step="0.01" name="minStock" placeholder="Stock mínimo"></div>
+          <div class="col-12"><button class="btn btn-primary" type="submit">Guardar ítem</button></div>
+        </form>
+
+        <hr>
+        <h6>Movimiento de stock</h6>
+        <form class="row g-2" th:action="@{/pharmacy/movements}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <div class="col-md-12">
+            <select class="form-select" name="itemId" required>
+              <option value="">Ítem</option>
+              <option th:each="i : ${items}" th:value="${i.id}" th:text="${i.name}">Ítem</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <select class="form-select" name="movementType" required>
+              <option th:each="m : ${movementTypes}" th:value="${m}" th:text="${m.label()}">Tipo</option>
+            </select>
+          </div>
+          <div class="col-md-6"><input class="form-control" type="number" step="0.01" name="quantity" placeholder="Cantidad" required></div>
+          <div class="col-md-6"><input class="form-control" type="number" step="0.01" name="unitCost" placeholder="Costo unitario"></div>
+          <div class="col-md-6"><input class="form-control" name="lotNumber" placeholder="Lote"></div>
+          <div class="col-md-6"><input class="form-control" type="date" name="expiresAt"></div>
+          <div class="col-md-6"><input class="form-control" name="referenceType" placeholder="Referencia tipo"></div>
+          <div class="col-12"><input class="form-control" name="notes" placeholder="Notas"></div>
+          <div class="col-12"><button class="btn btn-outline-primary" type="submit">Registrar movimiento</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-8">
+      <div class="card soft-card p-3 mb-3">
+        <h6>Inventario actual</h6>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Ítem</th><th>SKU</th><th class="text-end">Stock</th><th class="text-end">Mínimo</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="i : ${items}">
+              <td th:text="${i.name}">Ítem</td>
+              <td th:text="${i.sku != null ? i.sku : '—'}">SKU</td>
+              <td class="text-end" th:text="${stockByItemId[i.id]}">0</td>
+              <td class="text-end" th:text="${i.minStock}">0</td>
+              <td><span class="badge text-bg-warning" th:if="${stockByItemId[i.id] <= i.minStock}">Bajo</span></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card soft-card p-3 mb-3">
+        <h6>Compras</h6>
+        <form class="row g-2" th:action="@{/pharmacy/purchase-orders}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <div class="col-md-4"><input class="form-control" name="supplierName" placeholder="Suplidor" required></div>
+          <div class="col-md-6"><input class="form-control" name="notes" placeholder="Notas"></div>
+          <div class="col-md-2"><button class="btn btn-outline-primary w-100" type="submit">Crear OC</button></div>
+        </form>
+
+        <div class="table-responsive mt-2">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>#</th><th>Suplidor</th><th>Estado</th><th>Total</th><th>Agregar</th><th>Recibir</th></tr></thead>
+            <tbody>
+            <tr th:each="po : ${purchaseOrders}">
+              <td th:text="${po.id}">1</td>
+              <td th:text="${po.supplierName}">Proveedor</td>
+              <td><span class="badge text-bg-light" th:text="${po.status.label()}">Estado</span></td>
+              <td th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(po.total)}">RD$ 0.00</td>
+              <td>
+                <form class="d-flex gap-1" th:action="@{/pharmacy/purchase-orders/{id}/items(id=${po.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <select class="form-select form-select-sm" name="itemId" required>
+                    <option value="">Ítem</option>
+                    <option th:each="i : ${items}" th:value="${i.id}" th:text="${i.name}">Ítem</option>
+                  </select>
+                  <input class="form-control form-control-sm" type="number" step="0.01" name="quantity" placeholder="Qty" required>
+                  <input class="form-control form-control-sm" type="number" step="0.01" name="unitCost" placeholder="Costo" required>
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">+</button>
+                </form>
+              </td>
+              <td>
+                <form th:action="@{/pharmacy/purchase-orders/{id}/receive(id=${po.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-success" type="submit">Recibir</button>
+                </form>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card soft-card p-3">
+        <h6>Dispensaciones</h6>
+        <form class="row g-2" th:action="@{/pharmacy/dispensations}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <div class="col-md-4">
+            <select class="form-select" name="patientId" required>
+              <option value="">Paciente</option>
+              <option th:each="p : ${patients}" th:value="${p.id}" th:text="${p.fullName}">Paciente</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" name="admissionId">
+              <option value="">Admisión</option>
+              <option th:each="a : ${admissions}" th:value="${a.id}" th:text="${'#' + a.id}">Adm</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select" name="encounterId">
+              <option value="">Encuentro</option>
+              <option th:each="e : ${encounters}" th:value="${e.id}" th:text="${'#' + e.id}">Enc</option>
+            </select>
+          </div>
+          <div class="col-md-2"><button class="btn btn-outline-primary w-100" type="submit">Crear</button></div>
+          <div class="col-12"><input class="form-control" name="notes" placeholder="Notas"></div>
+        </form>
+
+        <div class="table-responsive mt-2">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>#</th><th>Paciente</th><th>Estado</th><th>Total</th><th>Agregar</th><th>Completar</th></tr></thead>
+            <tbody>
+            <tr th:each="d : ${dispensations}">
+              <td th:text="${d.id}">1</td>
+              <td th:text="${d.patient.fullName}">Paciente</td>
+              <td><span class="badge text-bg-light" th:text="${d.status.label()}">Estado</span></td>
+              <td th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(d.total)}">RD$ 0.00</td>
+              <td>
+                <form class="d-flex gap-1" th:action="@{/pharmacy/dispensations/{id}/items(id=${d.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <select class="form-select form-select-sm" name="itemId" required>
+                    <option value="">Ítem</option>
+                    <option th:each="i : ${items}" th:value="${i.id}" th:text="${i.name}">Ítem</option>
+                  </select>
+                  <input class="form-control form-control-sm" type="number" step="0.01" name="quantity" placeholder="Qty" required>
+                  <input class="form-control form-control-sm" type="number" step="0.01" name="unitPrice" placeholder="Precio">
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">+</button>
+                </form>
+              </td>
+              <td>
+                <form th:action="@{/pharmacy/dispensations/{id}/complete(id=${d.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-success" type="submit">Completar</button>
+                </form>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</html>

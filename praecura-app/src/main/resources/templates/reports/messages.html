@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Mensajería', 'Reportes', 'Mensajería clínica')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <form class="row g-2 align-items-end" th:action="@{/reports/messages}" method="get">
+      <div class="col-md-3">
+        <label class="form-label">Canal</label>
+        <select class="form-select" name="channel">
+          <option value="" th:selected="${channel == null}">Todos</option>
+          <option th:each="c : ${channels}" th:value="${c.name()}" th:selected="${channel != null and channel == c}" th:text="${c.name()}">SMS</option>
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Estado</label>
+        <select class="form-select" name="status">
+          <option value="" th:selected="${status == null}">Todos</option>
+          <option th:each="s : ${statuses}" th:value="${s.name()}" th:selected="${status != null and status == s}" th:text="${s.name()}">SENT</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Desde</label>
+        <input class="form-control" type="date" name="from" th:value="${from}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Hasta</label>
+        <input class="form-control" type="date" name="to" th:value="${to}">
+      </div>
+
+      <div class="col-md-2 d-flex gap-2">
+        <input type="hidden" name="size" th:value="${size}">
+        <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
+        <a class="btn btn-ghost" th:href="@{/reports/messages}">Limpiar</a>
+      </div>
+    </form>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+      <div class="text-muted small">Se registran recordatorios y estado de envío.</div>
+      <div class="text-muted small">Modo actual: revisa la configuración de mensajería en <span class="font-monospace">application.yml</span>.</div>
+    </div>
+  </div>
+
+  <div th:if="${logsPage.totalElements == 0}" class="empty-state">
+    <div class="empty-state__box">
+      <div class="empty-state__title">Sin registros de mensajería</div>
+      <div class="empty-state__text">Cuando se envíen recordatorios aparecerán aquí.</div>
+      <a class="btn btn-outline-dark" th:href="@{/reports}">Volver a Reportes</a>
+    </div>
+  </div>
+
+  <div th:if="${logsPage.totalElements > 0}" class="card soft-card p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+        <tr>
+          <th style="width:170px">Fecha</th>
+          <th style="width:120px">Canal</th>
+          <th style="width:120px">Estado</th>
+          <th style="width:220px">Destino</th>
+          <th style="width:110px">Cita</th>
+          <th style="width:110px">Paciente</th>
+          <th style="width:140px">Usuario</th>
+          <th>Resultado</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="l : ${logsPage.content}">
+          <td th:text="${#temporals.format(l.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 10:00</td>
+          <td>
+            <span class="badge text-bg-light" th:text="${l.channel}">SMS</span>
+          </td>
+          <td>
+            <span class="badge"
+                  th:classappend="${l.status.name() == 'SENT'} ? ' text-bg-success' : (${l.status.name() == 'FAILED'} ? ' text-bg-danger' : ' text-bg-warning')"
+                  th:text="${l.status}">SENT</span>
+          </td>
+          <td>
+            <span th:if="${l.toAddress != null}" th:title="${l.toAddress}" th:text="${#strings.abbreviate(l.toAddress, 26)}">destino</span>
+            <span th:if="${l.toAddress == null}" class="text-muted">-</span>
+          </td>
+          <td>
+            <a th:if="${l.appointmentId != null}" class="link-primary" th:href="@{/appointments/{id}/edit(id=${l.appointmentId})}" th:text="${l.appointmentId}">1</a>
+            <span th:if="${l.appointmentId == null}" class="text-muted">-</span>
+          </td>
+          <td>
+            <a th:if="${l.patientId != null}" class="link-primary" th:href="@{/patients/{id}/edit(id=${l.patientId})}" th:text="${l.patientId}">1</a>
+            <span th:if="${l.patientId == null}" class="text-muted">-</span>
+          </td>
+          <td th:text="${l.username != null ? l.username : '-'}">admin</td>
+          <td>
+            <span th:if="${l.error == null}" class="text-muted">OK</span>
+            <span th:if="${l.error != null}" th:text="${#strings.abbreviate(l.error, 80)}">Error</span>
+            <div class="small text-muted" th:if="${l.body != null}" th:title="${l.body}" th:text="${#strings.abbreviate(l.body, 60)}">Mensaje</div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="text-muted small">Mostrando <span th:text="${logsPage.numberOfElements}"></span> de <span th:text="${logsPage.totalElements}"></span></div>
+      <nav th:if="${logsPage.totalPages > 1}">
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item" th:classappend="${logsPage.first} ? 'disabled' : ''">
+            <a class="page-link"
+               th:href="@{/reports/messages(channel=${channel}, status=${status}, from=${from}, to=${to}, page=${logsPage.number-1}, size=${size})}">Anterior</a>
+          </li>
+
+          <li class="page-item"
+              th:each="i : ${#numbers.sequence(0, logsPage.totalPages-1)}"
+              th:classappend="${i == logsPage.number} ? 'active' : ''">
+            <a class="page-link"
+               th:href="@{/reports/messages(channel=${channel}, status=${status}, from=${from}, to=${to}, page=${i}, size=${size})}"
+               th:text="${i+1}">1</a>
+          </li>
+
+          <li class="page-item" th:classappend="${logsPage.last} ? 'disabled' : ''">
+            <a class="page-link"
+               th:href="@{/reports/messages(channel=${channel}, status=${status}, from=${from}, to=${to}, page=${logsPage.number+1}, size=${size})}">Siguiente</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+</html>

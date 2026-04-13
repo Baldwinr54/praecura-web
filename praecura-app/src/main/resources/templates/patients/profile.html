@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<div th:replace="~{fragments/layout :: layout(~{::content}, 'Paciente', 'Pacientes', 'Perfil clínico')}">
+  <div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+      <div>
+        <div class="d-flex align-items-center gap-2">
+          <h3 class="mb-0" th:text="${patient.fullName}">Paciente</h3>
+          <span class="badge rounded-pill text-bg-secondary" th:if="${!patient.active}">Inactivo</span>
+        </div>
+        <div class="text-muted small">ID <span th:text="${patient.id}">0</span></div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" th:href="@{/patients}">Volver</a>
+        <a class="btn btn-outline-secondary" th:href="@{/patients/{id}/edit(id=${patient.id})}">Editar</a>
+        <a class="btn btn-primary" th:href="@{/appointments/new(patientId=${patient.id})}">Nueva cita</a>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap mb-3">
+      <span class="badge rounded-pill text-bg-warning" th:if="${segment.missingPhone}">Sin teléfono</span>
+      <span class="badge rounded-pill text-bg-warning" th:if="${segment.missingEmail}">Sin correo</span>
+      <span class="badge rounded-pill text-bg-secondary" th:if="${segment.total == 0}">Sin historial</span>
+      <span class="badge rounded-pill text-bg-danger" th:if="${segment.noShowRate >= 30}">No-show alto</span>
+      <span class="badge rounded-pill text-bg-danger" th:if="${segment.chronicNoShow}">No-show crónico</span>
+      <span class="badge rounded-pill text-bg-secondary" th:if="${segment.inactive}">Inactivo 6m</span>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-lg-5">
+        <div class="card soft-card">
+          <div class="card-body">
+            <h6 class="text-muted">Datos</h6>
+
+            <div class="mb-2">
+              <div class="small text-muted">Teléfono</div>
+              <div>
+                <span th:text="${patient.phone}">—</span>
+                <span class="badge rounded-pill text-bg-warning ms-1" th:if="${patient.phone == null || patient.phone == ''}">Falta</span>
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <div class="small text-muted">Correo</div>
+              <div>
+                <span th:text="${patient.email}">—</span>
+                <span class="badge rounded-pill text-bg-warning ms-1" th:if="${patient.email == null || patient.email == ''}">Falta</span>
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <div class="small text-muted">Cédula</div>
+              <div th:text="${patient.cedula}">—</div>
+            </div>
+
+            <div class="mb-3">
+              <div class="small text-muted">Etiquetas</div>
+              <div th:if="${patient.flags != null && patient.flags != ''}">
+                <span class="badge text-bg-light border me-1"
+                      th:each="t : ${#strings.arraySplit(patient.flags, ',')}"
+                      th:text="${#strings.trim(t)}">VIP</span>
+              </div>
+              <div class="text-muted small" th:if="${patient.flags == null || patient.flags == ''}">—</div>
+            </div>
+
+            <div class="mb-3">
+              <div class="small text-muted">Datos fiscales</div>
+              <div class="small">
+                <div>
+                  <span class="text-muted">Nombre:</span>
+                  <span th:text="${patient.billingName != null && patient.billingName != '' ? patient.billingName : patient.fullName}">—</span>
+                </div>
+                <div>
+                  <span class="text-muted">RNC/Cédula:</span>
+                  <span th:text="${patient.billingTaxId}">—</span>
+                </div>
+                <div>
+                  <span class="text-muted">Dirección:</span>
+                  <span th:text="${patient.billingAddress}">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="small text-muted">Notas</div>
+              <div class="text-muted small" th:if="${patient.notes == null || patient.notes == ''}">—</div>
+              <div th:if="${patient.notes != null && patient.notes != ''}">
+                <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit" th:text="${patient.notes}"></pre>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="card soft-card mt-3">
+          <div class="card-body">
+            <h6 class="text-muted">Consentimientos recientes</h6>
+            <div th:if="${#lists.isEmpty(consentLogs)}" class="text-muted small">Sin cambios registrados.</div>
+            <ul class="list-group list-group-flush" th:if="${!#lists.isEmpty(consentLogs)}">
+              <li class="list-group-item px-0" th:each="c : ${consentLogs}">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <div>
+                    <div class="fw-semibold" th:text="${c.consentType.label()}">Consentimiento</div>
+                    <div class="small text-muted"
+                         th:text="${#temporals.format(c.capturedAt, 'dd/MM/yyyy HH:mm')}">Fecha</div>
+                  </div>
+                  <span class="badge rounded-pill"
+                        th:classappend="${c.granted} ? 'text-bg-success' : 'text-bg-danger'"
+                        th:text="${c.granted} ? 'Otorgado' : 'Revocado'">Estado</span>
+                </div>
+                <div class="small text-muted mt-1">
+                  Por <span th:text="${c.capturedBy}">usuario</span>
+                  <span th:if="${c.source != null && c.source != ''}">· <span th:text="${c.source}">UI</span></span>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card soft-card mt-3">
+          <div class="card-body">
+            <h6 class="text-muted">Timeline (últimos eventos)</h6>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item px-0" th:each="e : ${timeline.events}">
+                <div class="fw-semibold" th:text="${e.title}">Evento</div>
+                <div class="small text-muted" th:text="${#temporals.format(e.at, 'dd/MM/yyyy HH:mm')}">Fecha</div>
+                <div class="small" th:text="${e.detail}">Detalle</div>
+              </li>
+            </ul>
+            <div class="mt-2" th:if="${timeline.hasMore}">
+              <span class="text-muted small">Más eventos disponibles.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card soft-card mt-3">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="text-muted mb-0">Historia clínica</h6>
+              <a class="btn btn-sm btn-outline-primary" th:href="@{/patients/{id}/clinical(id=${patient.id})}">Abrir</a>
+            </div>
+            <div class="row g-2 small">
+              <div class="col-6">
+                <div class="text-muted">Alergias activas</div>
+                <div class="fw-semibold" th:text="${clinicalSummary.activeAllergies}">0</div>
+              </div>
+              <div class="col-6">
+                <div class="text-muted">Condiciones activas</div>
+                <div class="fw-semibold" th:text="${clinicalSummary.activeConditions}">0</div>
+              </div>
+              <div class="col-6">
+                <div class="text-muted">Medicamentos activos</div>
+                <div class="fw-semibold" th:text="${clinicalSummary.activeMedications}">0</div>
+              </div>
+              <div class="col-6">
+                <div class="text-muted">Notas clínicas</div>
+                <div class="fw-semibold" th:text="${clinicalSummary.notesCount}">0</div>
+              </div>
+              <div class="col-12">
+                <div class="text-muted">Últimos signos vitales</div>
+                <div class="fw-semibold" th:if="${clinicalSummary.lastVital != null}"
+                     th:text="${#temporals.format(clinicalSummary.lastVital.recordedAt, 'dd/MM/yyyy HH:mm')}">—</div>
+                <div class="text-muted small" th:if="${clinicalSummary.lastVital == null}">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="card soft-card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <h6 class="text-muted mb-0">Historial de citas</h6>
+              <div class="text-muted small">
+                <span th:text="${apptHistory.totalElements}">0</span> en total
+              </div>
+            </div>
+
+            <div th:if="${apptHistory.totalElements == 0}" class="empty-state mt-3">
+              <div class="empty-state__box">
+                <div class="empty-state__title">Sin citas registradas</div>
+                <div class="empty-state__text">Crea la primera cita desde este perfil.</div>
+                <a class="btn btn-primary" th:href="@{/appointments/new(patientId=${patient.id})}">Crear cita</a>
+              </div>
+            </div>
+
+            <div th:if="${apptHistory.totalElements > 0}" class="table-responsive mt-3">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Doctor</th>
+                  <th>Servicio</th>
+                  <th>Estado</th>
+                  <th style="width:120px;">Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="a : ${apptHistory.content}">
+                  <td th:text="${#temporals.format(a.scheduledAt, 'dd/MM/yyyy HH:mm')}">—</td>
+                  <td th:text="${a.doctor != null ? a.doctor.fullName : '—'}">—</td>
+                  <td th:text="${a.service != null ? a.service.name : '—'}">—</td>
+                  <td>
+                    <span class="badge status-badge" th:classappend="| status-${#strings.toLowerCase(a.status.name())}|"
+                          th:text="${a.status}">PROGRAMADA</span>
+                  </td>
+                  <td>
+                    <a class="btn btn-sm btn-outline-secondary" th:href="@{/appointments/{id}/edit(id=${a.id})}">Editar</a>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+          <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2"
+               th:if="${apptHistory.totalPages > 1}">
+            <div class="text-muted small">Página <span th:text="${apptHistory.number + 1}"></span> / <span th:text="${apptHistory.totalPages}"></span></div>
+
+            <nav>
+              <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" th:classappend="${apptHistory.first} ? 'disabled' : ''">
+                  <a class="page-link" th:href="@{/patients/{id}(id=${patient.id}, apptPage=${apptHistory.number-1}, apptSize=${apptSize})}">Anterior</a>
+                </li>
+                <li class="page-item"
+                    th:each="i : ${#numbers.sequence(0, apptHistory.totalPages-1)}"
+                    th:classappend="${i == apptHistory.number} ? 'active' : ''">
+                  <a class="page-link" th:href="@{/patients/{id}(id=${patient.id}, apptPage=${i}, apptSize=${apptSize})}"
+                     th:text="${i+1}">1</a>
+                </li>
+                <li class="page-item" th:classappend="${apptHistory.last} ? 'disabled' : ''">
+                  <a class="page-link" th:href="@{/patients/{id}(id=${patient.id}, apptPage=${apptHistory.number+1}, apptSize=${apptSize})}">Siguiente</a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

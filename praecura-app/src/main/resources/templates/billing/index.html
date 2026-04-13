@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Facturación', 'Finanzas', 'Facturación y caja clínica')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <form class="row g-2 align-items-end" th:action="@{/billing}" method="get">
+      <div class="col-md-3">
+        <label class="form-label">Estado</label>
+        <select class="form-select" name="status">
+          <option value="" th:selected="${status == null}">Todos</option>
+          <option th:each="st : ${statuses}" th:value="${st.name()}" th:selected="${status != null and status == st}" th:text="${st.label()}">Emitida</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Paciente ID</label>
+        <input class="form-control" type="number" min="1" name="patientId" placeholder="Ej: 12" th:value="${patientId}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Cita ID</label>
+        <input class="form-control" type="number" min="1" name="appointmentId" placeholder="Ej: 45" th:value="${appointmentId}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Desde</label>
+        <input class="form-control" type="date" name="from" th:value="${from}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Hasta</label>
+        <input class="form-control" type="date" name="to" th:value="${to}">
+      </div>
+
+      <div class="col-md-1 d-flex gap-2">
+        <input type="hidden" name="size" th:value="${size}">
+        <button class="btn btn-outline-secondary" type="submit">Filtrar</button>
+      </div>
+    </form>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+      <div class="text-muted small">Exporta facturas y pagos según el filtro actual.</div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-sm btn-outline-secondary" th:href="@{/billing/fiscal}">Configurar NCF</a>
+        <a class="btn btn-sm btn-outline-secondary" th:href="@{/billing/fiscal/ecf}">Tablero e-CF</a>
+        <a class="btn btn-sm btn-outline-secondary" th:href="@{/billing/charges}">Cargos clínicos</a>
+        <a class="btn btn-sm btn-outline-secondary" th:href="@{/billing/accounts-receivable}">Cuentas por cobrar</a>
+        <a class="btn btn-sm btn-outline-secondary" th:href="@{/billing/cash}">Caja</a>
+        <a class="btn btn-sm btn-outline-primary"
+           th:href="@{/billing/export.csv(status=${status}, patientId=${patientId}, appointmentId=${appointmentId}, from=${from}, to=${to})}">
+          Exportar CSV
+        </a>
+        <a class="btn btn-sm btn-outline-primary"
+           th:href="@{/billing/export.xlsx(status=${status}, patientId=${patientId}, appointmentId=${appointmentId}, from=${from}, to=${to})}">
+          Exportar XLSX
+        </a>
+      </div>
+    </div>
+
+    <div class="alert alert-warning mt-3 mb-0"
+         th:if="${cashSessionRequired and !cashSessionActive}">
+      Caja cerrada: el sistema exige caja abierta para pagos/reembolsos en efectivo.
+      <a class="alert-link" th:href="@{/billing/cash}">Abrir caja</a>
+    </div>
+
+    <div class="alert alert-info mt-3 mb-0"
+         th:if="${cashSessionRequired and cashSessionActive}">
+      Caja activa #
+      <strong th:text="${activeCashSession.id}">1</strong>
+      · Apertura:
+      <strong th:text="${#temporals.format(activeCashSession.openedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 08:00</strong>
+      · Esperado:
+      <strong th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(activeCashSummary.expected)}">RD$ 0.00</strong>
+    </div>
+  </div>
+
+  <div class="stat-grid mb-3">
+    <div class="stat-card">
+      <div class="stat-label">Total facturado</div>
+      <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(totalInvoiced)}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Cobros registrados</div>
+      <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(totalCaptured)}">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Balance pendiente</div>
+      <div class="stat-value" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(totalBalance)}">0</div>
+      <div class="metric-delta" th:if="${totalBalance != null and totalBalance > 0}">Pendiente de cobro</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Facturas por cobrar</div>
+      <div class="stat-value" th:text="${pendingCollectionCount}">0</div>
+      <div class="metric-delta" th:if="${pendingCollectionCount > 0}">Seguimiento diario</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Cargos pendientes</div>
+      <div class="stat-value" th:text="${openChargeCount}">0</div>
+      <div class="metric-delta" th:if="${openChargeCount > 0}">Listos para facturar</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">NCF pendientes</div>
+      <div class="stat-value" th:text="${pendingNcfCount}">0</div>
+      <div class="metric-delta" th:if="${pendingNcfCount > 0}">Regularizar fiscal</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Cuentas vencidas (+30d)</div>
+      <div class="stat-value" th:text="${overdueCollectionCount}">0</div>
+      <div class="metric-delta" th:if="${overdueCollectionCount > 0}">Cobro en riesgo</div>
+    </div>
+  </div>
+
+  <div th:if="${invoicesPage.totalElements == 0}" class="empty-state">
+    <div class="empty-state__box">
+      <div class="empty-state__title">Sin facturas</div>
+      <div class="empty-state__text">Crea una factura desde una cita con precio.</div>
+      <a class="btn btn-outline-dark" th:href="@{/appointments}">Ir a Citas</a>
+    </div>
+  </div>
+
+  <div th:if="${invoicesPage.totalElements > 0}" class="card soft-card p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+        <tr>
+          <th style="width:90px">Factura</th>
+          <th style="width:170px">Fecha</th>
+          <th>Paciente</th>
+          <th style="width:110px">Cita</th>
+          <th style="width:140px">NCF</th>
+          <th style="width:150px">Estado</th>
+          <th style="width:140px" class="text-end">Total</th>
+          <th style="width:140px" class="text-end">Balance</th>
+          <th style="width:140px" class="text-end">Acciones</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="i : ${invoicesPage.content}">
+          <td>
+            <a class="link-primary" th:href="@{/billing/invoices/{id}(id=${i.id})}" th:text="${i.id}">1</a>
+          </td>
+          <td th:text="${#temporals.format(i.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01</td>
+          <td>
+            <a th:if="${i.patient != null}" class="link-primary" th:href="@{/patients/{id}/edit(id=${i.patient.id})}" th:text="${i.patient.fullName}">Paciente</a>
+            <span th:if="${i.patient == null}" class="text-muted">-</span>
+          </td>
+          <td>
+            <a th:if="${i.appointment != null}" class="link-primary" th:href="@{/appointments/{id}/edit(id=${i.appointment.id})}" th:text="${i.appointment.id}">1</a>
+            <span th:if="${i.appointment == null}" class="text-muted">-</span>
+          </td>
+          <td>
+            <span th:if="${i.ncf != null}" th:text="${i.ncf}">NCF</span>
+            <span th:if="${i.ncf == null}" class="text-muted">Pendiente</span>
+          </td>
+          <td>
+            <span class="badge text-bg-light" th:text="${i.status != null ? i.status.label() : '—'}">Emitida</span>
+          </td>
+          <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(i.total)}">0</td>
+          <td class="text-end" th:text="${T(com.baldwin.praecura.util.UiFormatters).formatMoneyDOP(i.balance)}">0</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" th:href="@{/billing/invoices/{id}(id=${i.id})}">Ver</a>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="text-muted small">Mostrando <span th:text="${invoicesPage.numberOfElements}"></span> de <span th:text="${invoicesPage.totalElements}"></span></div>
+      <nav th:if="${invoicesPage.totalPages > 1}">
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item" th:classappend="${invoicesPage.first} ? 'disabled' : ''">
+            <a class="page-link"
+               th:href="@{/billing(status=${status}, patientId=${patientId}, appointmentId=${appointmentId}, from=${from}, to=${to}, page=${invoicesPage.number-1}, size=${size})}">Anterior</a>
+          </li>
+
+          <li class="page-item" th:each="p : ${#numbers.sequence(0, invoicesPage.totalPages-1)}"
+              th:classappend="${p == invoicesPage.number} ? 'active' : ''">
+            <a class="page-link"
+               th:href="@{/billing(status=${status}, patientId=${patientId}, appointmentId=${appointmentId}, from=${from}, to=${to}, page=${p}, size=${size})}"
+               th:text="${p+1}">1</a>
+          </li>
+
+          <li class="page-item" th:classappend="${invoicesPage.last} ? 'disabled' : ''">
+            <a class="page-link"
+               th:href="@{/billing(status=${status}, patientId=${patientId}, appointmentId=${appointmentId}, from=${from}, to=${to}, page=${invoicesPage.number+1}, size=${size})}">Siguiente</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+</html>

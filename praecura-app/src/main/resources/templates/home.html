@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Inicio', 'Inicio', 'Resumen clínico-operativo')}">
+
+<div th:fragment="content">
+
+  <!-- KPIs -->
+  <div class="stat-grid mb-3">
+    <div class="stat-card">
+      <div class="stat-label">Citas hoy</div>
+      <div class="stat-value" th:text="${dashboard.citasHoy}">0</div>
+      <div class="small text-muted" th:text="|Fecha: ${dashboard.fecha}|">Fecha</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Confirmadas</div>
+      <div class="stat-value" th:text="${dashboard.confirmadas}">0</div>
+      <div class="small text-muted" th:text="|Programadas: ${dashboard.programadas}|">Programadas</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Pendientes</div>
+      <div class="stat-value" th:text="${dashboard.pendientes}">0</div>
+      <div class="small text-muted">(Programadas + Confirmadas)</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Atendidas</div>
+      <div class="stat-value" th:text="${dashboard.atendidas}">0</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Canceladas</div>
+      <div class="stat-value" th:text="${dashboard.canceladas}">0</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">No asistió</div>
+      <div class="stat-value" th:text="${dashboard.noAsistio}">0</div>
+      <div class="small text-muted" th:text="|No-show: ${T(com.baldwin.praecura.util.UiFormatters).formatDecimal(dashboard.noShowRatePct, 1)}%|">No-show</div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Próximas 2 horas -->
+    <div class="col-12 col-lg-8">
+      <div class="card soft-card p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <div class="fw-semibold">Próximas 2 horas</div>
+            <div class="text-muted small">Vista operativa para recepción</div>
+          </div>
+          <a class="btn btn-outline-primary btn-sm" th:href="@{/agenda(date=${dashboard.fecha})}">Ver agenda de hoy</a>
+        </div>
+
+        <div class="table-responsive" th:if="${dashboard.proximas2h != null and !dashboard.proximas2h.isEmpty()}">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Paciente</th>
+              <th>Médico</th>
+              <th>Servicio</th>
+              <th>Estado</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="a : ${dashboard.proximas2h}">
+              <td th:text="${#temporals.format(a.scheduledAt, 'HH:mm')}">08:00</td>
+              <td th:text="${a.patient != null ? a.patient.fullName : '—'}">Paciente</td>
+              <td th:text="${a.doctor != null ? a.doctor.fullName : '—'}">Médico</td>
+              <td th:text="${a.service != null ? a.service.name : '—'}">Servicio</td>
+              <td>
+                <span class="badge" th:classappend="| status-${a.status != null ? #strings.toLowerCase(a.status.name()) : 'programada'}|"
+                      th:text="${a.status != null ? a.status.label() : '—'}">Estado</span>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="text-muted" th:if="${dashboard.proximas2h == null or dashboard.proximas2h.isEmpty()}">
+          No hay citas pendientes en las próximas 2 horas.
+        </div>
+      </div>
+
+      <!-- Carga por médico -->
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-2">Carga por médico (hoy)</div>
+        <div class="table-responsive" th:if="${dashboard.cargaPorMedico != null and !dashboard.cargaPorMedico.isEmpty()}">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Médico</th>
+              <th class="text-end">Citas</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${dashboard.cargaPorMedico}">
+              <td th:text="${r.doctorName}">Doctor</td>
+              <td class="text-end" th:text="${r.total}">0</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="text-muted" th:if="${dashboard.cargaPorMedico == null or dashboard.cargaPorMedico.isEmpty()}">
+          Sin datos de carga para hoy.
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="col-12 col-lg-4">
+      <div class="card soft-card p-3 mb-3">
+        <div class="fw-semibold mb-1">Acciones rápidas</div>
+        <div class="text-muted small mb-3">Operaciones comunes</div>
+        <div class="d-grid gap-2">
+          <a class="btn btn-primary" th:href="@{/appointments/new}"><i class="bi bi-plus-circle me-1"></i>Nueva cita</a>
+          <a class="btn btn-outline-primary" th:href="@{/patients/new}"><i class="bi bi-person-plus me-1"></i>Nuevo paciente</a>
+          <a class="btn btn-outline-primary" th:href="@{/doctors/new}"><i class="bi bi-person-badge me-1"></i>Nuevo médico</a>
+          <a class="btn btn-outline-secondary" th:href="@{/reports}"><i class="bi bi-bar-chart me-1"></i>Reportes</a>
+        </div>
+      </div>
+
+      <div class="card soft-card p-3 mb-3">
+        <div class="text-muted small">Médicos activos</div>
+        <div class="display-6 fw-bold" th:text="${dashboard.medicosActivos}">0</div>
+      </div>
+
+      <div class="card soft-card p-3">
+        <div class="fw-semibold mb-1">Alertas</div>
+        <div class="text-muted small mb-2">Calidad de datos / operación</div>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+            <span>Citas de hoy sin servicio</span>
+            <span class="badge bg-warning text-dark" th:text="${dashboard.alerts.citasSinServicioHoy}">0</span>
+          </li>
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+            <span>Pacientes sin teléfono (próx. 7 días)</span>
+            <span class="badge bg-warning text-dark" th:text="${dashboard.alerts.pacientesSinTelefonoProx7d}">0</span>
+          </li>
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+            <span>Recordatorios pendientes (próx. 24h)</span>
+            <span class="badge bg-warning text-dark" th:text="${dashboard.alerts.recordatoriosPendientesProx24h}">0</span>
+          </li>
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+            <span>Citas con médico inactivo (próx. 90 días)</span>
+            <span class="badge bg-warning text-dark" th:text="${dashboard.alerts.citasConMedicoInactivoFuturo90d}">0</span>
+          </li>
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center" th:if="${dashboard.alerts.highCancelRate}">
+            <span>Alerta: cancelaciones altas hoy</span>
+            <span class="badge bg-danger">Revisar</span>
+          </li>
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center" th:if="${dashboard.alerts.highNoShowRate}">
+            <span>Alerta: no-show alto hoy</span>
+            <span class="badge bg-danger">Revisar</span>
+          </li>
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center" th:if="${dashboard.alerts.highPendingLoad}">
+            <span>Alerta: carga alta pendiente</span>
+            <span class="badge bg-danger">Revisar</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card soft-card p-3 mt-3" th:if="${dashboard.actions != null and !dashboard.actions.isEmpty()}">
+    <div class="fw-semibold mb-2">Acciones recomendadas</div>
+    <div class="list-group list-group-flush">
+      <a class="list-group-item list-group-item-action px-0"
+         th:each="a : ${dashboard.actions}"
+         th:href="@{${a.href}}">
+        <div class="fw-semibold" th:text="${a.title}">Acción</div>
+        <div class="text-muted small" th:text="${a.detail}">Detalle</div>
+      </a>
+    </div>
+  </div>
+
+  <div class="card soft-card p-3 mt-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <div class="fw-semibold">Tendencia de citas</div>
+        <div class="text-muted small">Rango seleccionado</div>
+      </div>
+      <form class="d-flex gap-2 align-items-center" th:action="@{/}" method="get">
+        <input class="form-control form-control-sm" type="date" name="from" th:value="${from}">
+        <input class="form-control form-control-sm" type="date" name="to" th:value="${to}">
+        <button class="btn btn-sm btn-outline-primary" type="submit">Actualizar</button>
+      </form>
+    </div>
+
+    <div class="chart-box mt-3">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const labels = [[${series.labels}]];
+    const total = [[${series.total}]];
+    const pendientes = [[${series.pendientes}]];
+    const canceladas = [[${series.canceladas}]];
+    const noAsistio = [[${series.noAsistio}]];
+
+    const ctx = document.getElementById('trendChart');
+    if (ctx && window.Chart) {
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels.map(d => d.toString()),
+          datasets: [
+            { label: 'Total', data: total, borderColor: '#0f9d88', backgroundColor: 'rgba(15,157,136,0.12)', tension: 0.3 },
+            { label: 'Pendientes', data: pendientes, borderColor: '#2dd4bf', backgroundColor: 'rgba(45,212,191,0.10)', tension: 0.3 },
+            { label: 'Canceladas', data: canceladas, borderColor: '#1e3a8a', backgroundColor: 'rgba(30,58,138,0.10)', tension: 0.3 },
+            { label: 'No asistió', data: noAsistio, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', tension: 0.3 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'bottom' } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          }
+        }
+      });
+    }
+  </script>
+</div>
+
+</html>

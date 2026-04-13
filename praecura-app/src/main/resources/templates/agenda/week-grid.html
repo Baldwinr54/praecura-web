@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Agenda semanal', 'Agenda', 'Agenda por bloques')}">
+
+<div th:fragment="content">
+  <div class="page-actions">
+    <div>
+      <h3 class="m-0 section-title">Agenda por bloques</h3>
+      <div class="text-muted small" th:text="|Semana del ${start} al ${start.plusDays(6)}|">Semana</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" th:href="@{/agenda(date=${base}, doctorId=${doctorId}, siteId=${siteId}, status=${status != null ? status.name() : null})}">Día</a>
+      <a class="btn btn-sm btn-outline-secondary" th:href="@{/agenda/week(date=${base}, doctorId=${doctorId}, siteId=${siteId}, status=${status != null ? status.name() : null})}">Semana lista</a>
+      <a class="btn btn-sm btn-primary" th:href="@{/agenda/week-grid(date=${base}, doctorId=${doctorId}, siteId=${siteId}, status=${status != null ? status.name() : null})}">Semana bloques</a>
+    </div>
+  </div>
+
+  <div class="card soft-card p-3 mb-3">
+    <form class="row g-2 align-items-end" method="get" th:action="@{/agenda/week-grid}">
+      <div class="col-12 col-md-3">
+        <label class="form-label">Semana (cualquier día)</label>
+        <input class="form-control" type="date" name="date" th:value="${base}"/>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Médico</label>
+        <select class="form-select" name="doctorId">
+          <option value="">Todos</option>
+          <option th:each="d : ${doctors}" th:value="${d.id}" th:selected="${doctorId != null and doctorId == d.id}" th:text="${d.fullName}">Doctor</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Sede</label>
+        <select class="form-select" name="siteId">
+          <option value="">Todas</option>
+          <option th:each="s : ${sites}" th:value="${s.id}" th:selected="${siteId != null and siteId == s.id}" th:text="${s.name}">Sede</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Estado</label>
+        <select class="form-select" name="status">
+          <option value="">Todos</option>
+          <option th:each="st : ${statuses}" th:value="${st.name()}" th:selected="${status != null and status == st}" th:text="${st.label()}">Status</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <button class="btn btn-primary w-100" type="submit">Aplicar</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="agenda-grid">
+    <div class="agenda-grid__head">
+      <div class="slot-head">Hora</div>
+      <div class="day-head" th:each="d : ${days}">
+        <div class="fw-semibold" th:text="${#temporals.format(d, 'EEEE')}">Día</div>
+        <div class="text-muted small" th:text="${#temporals.format(d, 'dd/MM')}">Fecha</div>
+      </div>
+    </div>
+
+    <div class="agenda-grid__body">
+      <div class="slot-row" th:each="s : ${slots}">
+        <div class="slot-time" th:text="${#temporals.format(#temporals.createNow().withHour(s.hour).withMinute(s.minute), 'HH:mm')}">08:00</div>
+        <div class="slot-cell" th:each="d : ${days}">
+          <div class="slot-card"
+               th:each="a : ${grid.get(d).get(s)}"
+               th:classappend="|${a.service == null ? ' danger' : ''}${a.patient != null and ((#strings.isEmpty(a.patient.phone) and #strings.isEmpty(a.patient.email)) or !(a.patient.consentSms or a.patient.consentEmail or a.patient.consentWhatsapp)) ? ' warn' : ''}|">
+            <div class="slot-title" th:text="${a.patient != null ? a.patient.fullName : 'Paciente'}">Paciente</div>
+            <div class="slot-sub">
+              <span th:text="${a.doctor != null ? a.doctor.fullName : 'Médico'}">Médico</span>
+              <span th:if="${a.site != null}"> · </span>
+              <span th:if="${a.site != null}" th:text="${a.site.name}">Sede</span>
+              <span th:if="${a.resource != null}"> · </span>
+              <span th:if="${a.resource != null}" th:text="${a.resource.name}">Recurso</span>
+              <span class="badge text-bg-danger ms-1" th:if="${a.service == null}">Falta servicio</span>
+              <span class="badge text-bg-warning ms-1"
+                    th:if="${a.patient != null and (a.patient.phone == null or #strings.isEmpty(a.patient.phone))}">Sin tel</span>
+              <span class="badge text-bg-warning ms-1"
+                    th:if="${a.patient != null and (a.patient.email == null or #strings.isEmpty(a.patient.email))}">Sin email</span>
+              <span class="badge text-bg-danger ms-1"
+                    th:if="${a.patient != null and !(a.patient.consentSms or a.patient.consentEmail or a.patient.consentWhatsapp)}">Sin consentimiento</span>
+              <span class="badge text-bg-info ms-1"
+                    th:if="${a.triageLevel != null}" th:text="${a.triageLevel.label()}">Prioridad</span>
+            </div>
+            <span class="status-badge"
+                  th:classappend="| status-${a.status != null ? #strings.toLowerCase(a.status.name()) : 'programada'}|"
+                  th:text="${a.status != null ? a.status.label() : '—'}">Estado</span>
+            <div class="slot-actions">
+              <form th:if="${a.status != null and a.status.name() == 'PROGRAMADA'}"
+                    th:action="@{/appointments/{id}/confirm(id=${a.id})}" method="post" style="display:inline"
+                    data-confirm="¿Confirmar esta cita?">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button class="btn btn-xs btn-outline-primary" type="submit" title="Confirmar">✓</button>
+              </form>
+              <form th:if="${a.status != null and (a.status.name() == 'PROGRAMADA' or a.status.name() == 'CONFIRMADA')}"
+                    th:action="@{/appointments/{id}/complete(id=${a.id})}" method="post" style="display:inline"
+                    data-confirm="¿Marcar como completada esta cita?">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button class="btn btn-xs btn-outline-success" type="submit" title="Completar">✓</button>
+              </form>
+              <form th:if="${a.status != null and (a.status.name() == 'PROGRAMADA' or a.status.name() == 'CONFIRMADA')}"
+                    th:action="@{/appointments/{id}/no-show(id=${a.id})}" method="post" style="display:inline"
+                    data-confirm="¿Marcar esta cita como no-show?">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button class="btn btn-xs btn-outline-warning" type="submit" title="No-show">!</button>
+              </form>
+              <form th:if="${a.status != null and a.status.name() != 'CANCELADA'}"
+                    th:action="@{/appointments/{id}/cancel(id=${a.id})}" method="post" style="display:inline"
+                    data-confirm="¿Cancelar esta cita?">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button class="btn btn-xs btn-outline-danger" type="submit" title="Cancelar">×</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</html>

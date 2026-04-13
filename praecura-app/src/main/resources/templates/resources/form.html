@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Recurso', 'Recurso', 'Registro de recurso')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4">
+    <form th:object="${form}"
+          th:action="${form.id} == null ? @{/resources} : @{|/resources/${form.id}|}"
+          method="post">
+
+      <input type="hidden" th:field="*{id}">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nombre</label>
+          <input class="form-control" th:field="*{name}" placeholder="Ej: Consultorio 3">
+          <div class="text-danger small" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Tipo</label>
+          <select class="form-select" th:field="*{type}">
+            <option value="">-- Seleccione --</option>
+            <option th:each="t : ${types}" th:value="${t}" th:text="${t.label()}"></option>
+          </select>
+          <div class="text-danger small" th:if="${#fields.hasErrors('type')}" th:errors="*{type}"></div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Sede</label>
+          <select class="form-select" th:field="*{siteId}">
+            <option value="">-- Seleccione --</option>
+            <option th:each="s : ${sites}" th:value="${s.id}" th:text="${s.name}"></option>
+          </select>
+          <div class="text-danger small" th:if="${#fields.hasErrors('siteId')}" th:errors="*{siteId}"></div>
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Notas</label>
+          <textarea class="form-control" rows="3" th:field="*{notes}" placeholder="Observaciones internas (opcional)"></textarea>
+          <div class="text-danger small" th:if="${#fields.hasErrors('notes')}" th:errors="*{notes}"></div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary">Guardar</button>
+        <a class="btn btn-outline-dark" th:href="@{/resources}">Volver</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+</html>

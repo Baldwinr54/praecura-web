@@ -1,0 +1,3 @@
+ALTER TABLE payments
+  ADD COLUMN IF NOT EXISTS cash_received NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS cash_change NUMERIC(12,2);

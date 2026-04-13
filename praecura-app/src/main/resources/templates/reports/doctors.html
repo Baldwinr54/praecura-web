@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Médicos', 'Reportes', 'Comparativo por médico')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1 section-title">Comparativo por médico</h5>
+        <div class="text-muted small">Volumen de citas en el rango seleccionado.</div>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <form class="d-flex gap-2 align-items-center" th:action="@{/reports/doctors}" method="get">
+          <input class="form-control form-control-sm" type="date" name="from" th:value="${from}">
+          <input class="form-control form-control-sm" type="date" name="to" th:value="${to}">
+          <input type="hidden" name="limit" th:value="${limit}">
+          <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+        </form>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/doctors/export.csv(from=${from}, to=${to})}">Exportar CSV</a>
+        <a class="btn btn-sm btn-outline-primary" th:href="@{/reports/doctors/export.xlsx(from=${from}, to=${to})}">Exportar XLSX</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Top médicos</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+            <tr>
+              <th>Médico</th>
+              <th class="text-end">Citas</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${byDoctor}">
+              <td th:text="${r.name}">Médico</td>
+              <td class="text-end" th:text="${r.total}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(byDoctor)}">
+              <td colspan="2" class="text-center text-muted py-3">Sin datos</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="text-muted small mt-2" th:if="${totalRows != null}">
+          Mostrando <span th:text="${showingRows}">0</span> de <span th:text="${totalRows}">0</span>
+          <a class="ms-2" th:if="${limited}" th:href="@{/reports/doctors(from=${from}, to=${to}, limit=0)}">Mostrar todo</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card soft-card p-3 h-100">
+        <div class="fw-semibold mb-2">Distribución</div>
+        <div class="chart-box">
+          <canvas id="doctorBar"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script th:inline="javascript">
+    const rows = [[${chartRows}]];
+    const labels = rows.map(r => r.name);
+    const values = rows.map(r => r.total);
+    const ctx = document.getElementById('doctorBar');
+    if (ctx && window.Chart) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{ label: 'Citas', data: values, backgroundColor: 'rgba(15,157,136,0.6)' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+  </script>
+</div>
+
+</html>

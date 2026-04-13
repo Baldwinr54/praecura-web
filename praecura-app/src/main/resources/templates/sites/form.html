@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Sede', 'Sede', 'Registro de sede')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4">
+    <form th:object="${form}"
+          th:action="${form.id} == null ? @{/sites} : @{|/sites/${form.id}|}"
+          method="post">
+
+      <input type="hidden" th:field="*{id}">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nombre</label>
+          <input class="form-control" th:field="*{name}" placeholder="Ej: Sede Central">
+          <div class="text-danger small" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Código</label>
+          <input class="form-control" th:field="*{code}" placeholder="Ej: SC">
+          <div class="text-danger small" th:if="${#fields.hasErrors('code')}" th:errors="*{code}"></div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Teléfono</label>
+          <input class="form-control" th:field="*{phone}" placeholder="809-555-0000" inputmode="numeric" maxlength="12" data-mask="rd-phone">
+          <div class="text-danger small" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></div>
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Dirección</label>
+          <input class="form-control" th:field="*{address}" placeholder="Ej: Av. Principal #123">
+          <div class="text-danger small" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></div>
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Notas</label>
+          <textarea class="form-control" rows="3" th:field="*{notes}" placeholder="Observaciones internas (opcional)"></textarea>
+          <div class="text-danger small" th:if="${#fields.hasErrors('notes')}" th:errors="*{notes}"></div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary">Guardar</button>
+        <a class="btn btn-outline-dark" th:href="@{/sites}">Volver</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+</html>

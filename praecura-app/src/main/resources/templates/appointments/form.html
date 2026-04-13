@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::content}, 'Cita', 'Cita', 'Registro de cita')}">
+
+<div th:fragment="content">
+  <div class="card soft-card p-4">
+
+    <form th:object="${form}"
+          th:action="@{/appointments}"
+          method="post"
+          data-appointment-form
+          th:attr="data-appointment-id=${form.id}">
+
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <input type="hidden" th:field="*{id}"/>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Paciente</label>
+          <select class="form-select" th:field="*{patientId}" required>
+            <option value="">-- Seleccione --</option>
+            <option th:each="p : ${patients}" th:value="${p.id}" th:text="${p.fullName}"></option>
+          </select>
+          <div class="text-danger small" th:if="${#fields.hasErrors('patientId')}" th:errors="*{patientId}"></div>
+          <div class="form-text">Se requiere al menos un contacto (teléfono o email) para confirmar recordatorios.</div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Médico</label>
+          <select class="form-select" id="doctorId" th:field="*{doctorId}" required>
+            <option value="">-- Seleccione --</option>
+            <option th:each="d : ${doctors}"
+                    th:value="${d.id}"
+                    th:text="${d.fullName}"
+                    th:attr="data-work-days=${d.workDays}, data-work-start=${d.workStart}, data-work-end=${d.workEnd}"></option>
+          </select>
+          <div class="text-danger small" th:if="${#fields.hasErrors('doctorId')}" th:errors="*{doctorId}"></div>
+          <div id="doctorScheduleHint" class="form-text" hidden></div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Sede</label>
+          <select class="form-select" id="siteId" th:field="*{siteId}" required>
+            <option value="">-- Seleccione --</option>
+            <option th:each="s : ${sites}" th:value="${s.id}" th:text="${s.name}"></option>
+          </select>
+          <div class="text-danger small" th:if="${#fields.hasErrors('siteId')}" th:errors="*{siteId}"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Recurso</label>
+          <select class="form-select" id="resourceId" th:field="*{resourceId}" required>
+            <option value="">-- Seleccione --</option>
+            <option th:each="r : ${resources}"
+                    th:value="${r.id}"
+                    th:text="${r.name}"
+                    th:attr="data-site=${r.site != null ? r.site.id : ''}"></option>
+          </select>
+          <div class="form-text">El recurso ayuda a controlar disponibilidad de espacios/equipos.</div>
+          <div class="text-danger small" th:if="${#fields.hasErrors('resourceId')}" th:errors="*{resourceId}"></div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-5">
+          <label class="form-label">Fecha y hora</label>
+          <input class="form-control" type="datetime-local" th:field="*{scheduledAt}" data-min-now="true" step="60"/>
+          <div class="text-danger small" th:if="${#fields.hasErrors('scheduledAt')}" th:errors="*{scheduledAt}"></div>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Servicio</label>
+          <select class="form-select" id="serviceId" th:field="*{serviceId}" required>
+            <option value="">-- Seleccione --</option>
+            <option th:each="s : ${services}" th:value="${s.id}" th:text="${s.name}" th:attr="data-duration=${s.durationMinutes}"></option>
+          </select>
+          <div id="serviceHint" class="form-text">Requerido. La duración se ajusta automáticamente (puedes cambiarla).</div>
+          <div class="text-danger small" th:if="${#fields.hasErrors('serviceId')}" th:errors="*{serviceId}"></div>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Duración (min)</label>
+          <input class="form-control" id="durationMinutes" type="number" min="5" step="5" th:field="*{durationMinutes}" placeholder="30"/>
+          <input type="hidden" id="durationAuto" th:field="*{durationAuto}"/>
+          <div class="form-text">Si eliges servicio, se toma su duración por defecto.</div>
+          <div class="text-danger small" th:if="${#fields.hasErrors('durationMinutes')}" th:errors="*{durationMinutes}"></div>
+        </div>
+      </div>
+
+      <div id="availabilityBox" class="availability-box callout warning mb-3" hidden>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <div class="fw-semibold">Disponibilidad</div>
+            <div id="availabilityMessage" class="small">Validando…</div>
+          </div>
+          <button id="applySuggestion" class="btn btn-sm btn-outline-primary" type="button" hidden>
+            Usar sugerencia: <span id="suggestedAtLabel"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label">Prioridad clínica</label>
+          <select class="form-select" th:field="*{triageLevel}">
+            <option value="">-- Sin prioridad --</option>
+            <option th:each="t : ${triageLevels}" th:value="${t}" th:text="${t.label()}"></option>
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Notas de prioridad</label>
+          <input class="form-control" th:field="*{triageNotes}" placeholder="Observaciones rápidas (opcional)"/>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Estado</label>
+          <select class="form-select" th:field="*{status}">
+            <option th:each="st : ${statuses}" th:value="${st}" th:text="${st.label()}"></option>
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Motivo</label>
+          <input class="form-control" th:field="*{reason}" placeholder="Ej: Consulta general"/>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label">Notas</label>
+        <textarea class="form-control" rows="3" th:field="*{notes}" placeholder="Notas internas (opcional)"></textarea>
+      </div>
+
+      <div class="row g-3 mt-3">
+        <div class="col-md-4">
+          <label class="form-label">Check-in</label>
+          <input class="form-control" type="datetime-local" step="60" th:field="*{checkedInAt}"/>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Inicio</label>
+          <input class="form-control" type="datetime-local" step="60" th:field="*{startedAt}"/>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Completado</label>
+          <input class="form-control" type="datetime-local" step="60" th:field="*{completedAt}"/>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary">Guardar</button>
+        <a class="btn btn-outline-dark" th:href="@{/appointments}">Volver</a>
+      </div>
+    </form>
+
+  </div>
+  <script th:src="@{/js/appointments.js}" defer></script>
+
+</div>
+
+</html>
