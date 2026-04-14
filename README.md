@@ -64,7 +64,7 @@ El archivo .env.example contiene únicamente valores de ejemplo.
 
 ## Integrantes del grupo
 
-- Rafael Estévez Espinal (**Líder**)
+- Rafael Estévez Espinal
 - Eduardo García
 - Luisanna Jiménez Reyes
 - Jhonny Julio Morillo Novas
