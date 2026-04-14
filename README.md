@@ -62,6 +62,14 @@ En la carpeta deploy/ se incluyen:
 Las credenciales reales y variables sensibles no se almacenan en este repositorio.
 El archivo .env.example contiene únicamente valores de ejemplo.
 
-## Autor
+## Integrantes del grupo
 
-Baldwin Rodríguez
+- Rafael Estévez Espinal (**Líder**)
+- Eduardo García
+- Luisanna Jiménez Reyes
+- Jhonny Julio Morillo Novas
+- Abimilet Peralta Grullon
+- Daniel Esmill Pérez
+- Baldwin Rodríguez Rodríguez
+- Jason Jesús Tejada Monegro
+- Rafael Antonio Vargas Jiménez
