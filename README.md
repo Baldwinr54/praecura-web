@@ -62,7 +62,7 @@ En la carpeta deploy/ se incluyen:
 Las credenciales reales y variables sensibles no se almacenan en este repositorio.
 El archivo .env.example contiene únicamente valores de ejemplo.
 
-## Integrantes del grupo
+## Integrantes del Grupo 7
 
 - Rafael Estévez Espinal
 - Eduardo García
